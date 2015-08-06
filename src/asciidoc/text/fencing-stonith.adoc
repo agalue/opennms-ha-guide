@@ -243,6 +243,7 @@ pcmk_host_map="{cluster_node_name_X}:{vm_name_in_virtualbox_X}"
 
 Now, it is important to tell the cluster where the stonith resources must be allocated.
 The vbox_1 is defined to fence _onmssrv01_, so it cannot be running on the same node for obvious reasons.
+A similar situation applies for _onmssrv02_ and vbox_2.
 Because of this, we need to define a location constraint for each snotty resource.
 
 [source, bash]
@@ -614,8 +615,9 @@ pcmk_host_map="{cluster_node_name_X}:{vm_name_on_vcenter_X}"
 ----
 
 Now, it is important to tell the cluster where the stonith resources must be allocated.
-The vbox_1 is defined to fence _onmssrv01_, so it cannot be running on the same node for obvious reasons.
-because of this, we need to define a location constraint for each snotty resource"
+The vmware_1 is defined to fence _onmssrv01_, so it cannot be running on the same node for obvious reasons.
+A similar situation applies for _onmssrv02_ and vmware_2.
+Because of this, we need to define a location constraint for each snotty resource"
 
 [source, bash]
 ----
