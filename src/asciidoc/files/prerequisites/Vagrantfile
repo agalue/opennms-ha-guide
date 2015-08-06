@@ -1,0 +1,48 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+boxes = [
+  {
+    :name => "onmssrv01",
+    :ip   => "192.168.205.151",
+    :mem  => "2048",
+    :cpu  => "1"
+  }, {
+    :name => "onmssrv02",
+    :ip   => "192.168.205.152",
+    :mem  => "2048",
+    :cpu  => "1"
+  }, {
+    :name => "pgdbsrv01",
+    :ip   => "192.168.205.153",
+    :mem  => "1024",
+    :cpu  => "1"
+  }, {
+    :name => "pgdbsrv02",
+    :ip   => "192.168.205.153",
+    :mem  => "1024",
+    :cpu  => "1"
+  }, {
+    :name => "nfssrv01",
+    :ip   => "192.168.205.155",
+    :mem  => "1024",
+    :cpu  => "1"
+  }
+]
+Vagrant.configure(2) do |config|
+  config.vm.box = "chef/centos-6.6"
+  boxes.each do |opts|
+    config.vm.define opts[:name] do |config|
+      if opts[:box]
+          config.vm.box = opts[:box]
+      end
+      config.vm.hostname = opts[:name] + ".local"
+      config.vm.provider "virtualbox" do |v|
+        v.name = "opennms-cluster-" + opts[:name]
+        v.customize [ "modifyvm", :id, "--cpus", opts[:cpu] ]
+        v.customize [ "modifyvm", :id, "--memory", opts[:mem] ]
+      end
+      config.vm.network "private_network", ip: opts[:ip]
+    end
+  end
+end

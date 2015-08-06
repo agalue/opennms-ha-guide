@@ -1,0 +1,28 @@
+
+[[ha-opennms]]
+= High Available OpenNMS
+:author: Alejandro Galue, agalue@opennms.com
+:revnumber: {doc-version}
+:revdate: {last-update-label} {docdatetime}
+:version-label!:
+:ascii-ids:
+:encoding: UTF-8
+:icons: font
+:toc: left
+:toclevels: 3
+:numbered:
+:imagesdir: images
+
+include::text/introduction.adoc[]
+include::text/architecture.adoc[]
+include::text/prerequisites.adoc[]
+include::text/postgresql-cluster.adoc[]
+include::text/opennms.adoc[]
+include::text/cluster-creation-rhel-6.adoc[]
+include::text/cluster-creation-rhel-7.adoc[]
+include::text/fencing-stonith.adoc[]
+include::text/cluster-troubleshooting.adoc[]
+include::text/monitoring-cluster.adoc[]
+include::text/upgrade-cluster-environment.adoc[]
+include::text/appendix-a.adoc[]
+include::text/appendix-b.adoc[]

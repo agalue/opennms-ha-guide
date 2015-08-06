@@ -1,0 +1,285 @@
+
+// Allow GitHub image rendering
+:imagesdir: ../images
+
+== Monitoring the OpenNMS Cluster
+
+It is very useful to monitor the _VMs_ involved on the cluster solution to be sure they are working fine and be sure they can handle the current load.
+
+The approach for this is creating a new requisition without detectors and one IP policy to avoid discovering IP interfaces.
+The reason for this is to monitor only what is explicitly defined on the requisition.
+
+The reason for this is because the floating IP (or virtual IP) will be bouncing between the two cluster nodes where _OpenNMS_ is running, but the standby node that is not running _OpenNMS_ must be monitored.
+
+For this reason the idea is adding a node for the _opennms-cluster_ using the _virtual-ip_ and the services for the _OpenNMS JVM_ and _PostgreSQL_; and then, Adding a node for each machine involved on the cluster to monitor them through SNMP.
+
+Before start, we should configure _Pollerd_ and _Collectd_ properly.
+
+Edit `poller-configuration.xml`, and replace the service called _Postgres_ with the following:
+
+[source, xml]
+----
+<service name="PostgreSQL" interval="300000" user-defined="false" status="on">
+    <parameter key="retry" value="1" />
+    <parameter key="banner" value="*" />
+    <parameter key="port" value="5432" />
+    <parameter key="timeout" value="3000" />
+</service>
+<service name="OpenNMS-PostgreSQL" interval="300000" user-defined="false" status="on">
+    <parameter key="retry" value="1" />
+    <parameter key="banner" value="*" />
+    <parameter key="port" value="9999" />
+    <parameter key="timeout" value="3000" />
+</service>
+...
+<monitor service="PostgreSQL"
+    class-name="org.opennms.netmgt.poller.monitors.TcpMonitor" />
+<monitor service="OpenNMS-PostgreSQL"
+    class-name="org.opennms.netmgt.poller.monitors.TcpMonitor" />
+----
+
+Edit `collectd-configuration.xml` and change the name of the _PostgreSQL_ service to look like the following:
+
+[source, bash]
+----
+<service name="OpenNMS-PostgreSQL" interval="300000" user-defined="false" status="on">
+    <parameter key="collection" value="PostgreSQL"/>
+    <parameter key="thresholding-enabled" value="true"/>
+    <parameter key="driver" value="org.postgresql.Driver"/>
+    <parameter key="user" value="opennms"/>
+    <parameter key="password" value="opennms"/>
+    <parameter key="url" value="jdbc:postgresql://OPENNMS_JDBC_HOSTNAME:9999/opennms"/>
+</service>
+...
+<collector service="OpenNMS-PostgreSQL"
+    class-name="org.opennms.netmgt.collectd.JdbcCollector"/>
+----
+
+Finally restart _OpenNMS_.
+Remember to use the cluster service to perform the restart and avoid using the opennms script.
+
+Now, proceed to configure the requisition and start monitoring the cluster.
+
+1. Install _SNMP_ on all the machines.
+
+[source, bash]
+----
+[root@onmssrv01 ~]# yum install net-snmp net-snmp-utils -y
+----
+
+2. Configure the internal firewall to accept connections on port _UDP 161_, on all the machines.
+
+On _RHEL/CentOS 6_:
+
+Edit the `/etc/sysconfig/iptables` file on all the servers, and then add the following rules before the first `REJECT` entry:
+
+[source, bash]
+----
+-A INPUT -p udp --dport 161 -j ACCEPT
+----
+
+Then, restart iptables on all the servers:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# service iptables restart
+----
+
+On _RHEL/CentOS 7_:
+
+Create a file called `/etc/firewalld/services/snmp.xml` on all the servers with the following content:
+
+[source, xml]
+----
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>snmmp</short>
+  <description>SNMP Simple Network Management Protocol</description>
+  <port protocol="udp" port="161"/>
+</service>
+----
+
+Then, execute the following commands on all the servers:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# firewall-cmd --reload
+[root@onmssrv01 ~]# firewall-cmd --permanent --add-service=snmp
+[root@onmssrv01 ~]# firewall-cmd --add-service=snmp
+----
+
+3. Configure _SNMP_ by editing `/etc/snmp/snmp.conf` and adding the following settings, on all the machines.
+
+[source, bash]
+----
+com2sec onmsUser   192.168.205.0/24  0penNMS!
+group   onmsGroup  v1                onmsUser
+group   onmsGroup  v2c               onmsUser
+view    all        included    .1    80
+access  onmsGroup  ""          any   noauth     0    all    none   none
+----
+
+4. Enable and start the _SNMP_ service on all the machines.
+
+On _RHEL/CentOS 6_:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# chkconfig snmpd on
+[root@onmssrv01 ~]# service snmpd start
+----
+
+On _RHEL/CentOS 7_:
+
+[source, bash]
+---
+[root@onmssrv01 ~]# systemctl enable snmpd
+[root@onmssrv01 ~]# systemctl start snmpd
+–--
+
+5. Configure the _SNMP_ community in _OpenNMS_.
+
+From the cluster node on which _OpenNMS_ is running, execute the following commands to configure the _SNMP_ community:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# for num in 151 152 153 154 155
+> do
+> /opt/opennms/bin/provision.pl --username admin --password admin snmp set 192.168.205.$num 0penNMS! version=2c
+> done
+----
+
+The community string is `0penNMS!`, and the version is _2c_.
+
+6. Create the requisition.
+
+[source, bash]
+----
+[root@onmssrv01 ~]# PROVISION="/opt/opennms/bin/provision.pl --username admin --password admin"
+[root@onmssrv01 ~]# $PROVISION requisition add OpenNMS
+[root@onmssrv01 ~]# $PROVISION node add OpenNMS onms-cluster onms-cluster
+[root@onmssrv01 ~]# $PROVISION interface add OpenNMS onms-cluster 192.168.205.150
+[root@onmssrv01 ~]# $PROVISION interface set OpenNMS onms-cluster 192.168.205.150 snmp-primary N
+[root@onmssrv01 ~]# $PROVISION service add OpenNMS onms-cluster 192.168.205.150 OpenNMS-JVM
+[root@onmssrv01 ~]# $PROVISION service add OpenNMS onms-cluster 192.168.205.150 OpenNMS-PostgreSQL
+[root@onmssrv01 ~]# $PROVISION node add OpenNMS onmssrv01 onmssrv01
+[root@onmssrv01 ~]# $PROVISION interface add OpenNMS onmssrv01 192.168.205.151
+[root@onmssrv01 ~]# $PROVISION interface set OpenNMS onmssrv01 192.168.205.151 snmp-primary P
+[root@onmssrv01 ~]# $PROVISION node add OpenNMS onmssrv02 onmssrv02
+[root@onmssrv01 ~]# $PROVISION interface add OpenNMS onmssrv02 192.168.205.152
+[root@onmssrv01 ~]# $PROVISION interface set OpenNMS onmssrv02 192.168.205.152 snmp-primary P
+[root@onmssrv01 ~]# $PROVISION node add OpenNMS pgdbsrv01 pgdbsrv01
+[root@onmssrv01 ~]# $PROVISION interface add OpenNMS pgdbsrv01 192.168.205.153
+[root@onmssrv01 ~]# $PROVISION interface set OpenNMS pgdbsrv01 192.168.205.153 snmp-primary P
+[root@onmssrv01 ~]# $PROVISION node add OpenNMS pgdbsrv02 pgdbsrv02
+[root@onmssrv01 ~]# $PROVISION interface add OpenNMS pgdbsrv02 192.168.205.154
+[root@onmssrv01 ~]# $PROVISION interface set OpenNMS pgdbsrv02 192.168.205.154 snmp-primary P
+[root@onmssrv01 ~]# $PROVISION node add OpenNMS nfssrv01 nfssrv01
+[root@onmssrv01 ~]# $PROVISION interface add OpenNMS nfssrv01 192.168.205.155
+[root@onmssrv01 ~]# $PROVISION interface set OpenNMS nfssrv01 192.168.205.155 snmp-primary P
+----
+
+Here is how the requisition looks like:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# $PROVISION list
+* OpenNMS (last updated: 2015-07-30T00:53:13.067Z)
+  * nodes:
+    * onms_cluster (foreign ID: onms_cluster)
+      * building: OpenNMS
+      * interfaces:
+        * 192.168.205.150 (Virtual)
+          * services:
+            * OpenNMS-PostgreSQL
+            * OpenNMS-JVM
+          * SNMP Primary: N
+          * Status: 1
+    * nfssrv01 (foreign ID: nfssrv01)
+      * building: OpenNMS
+      * interfaces:
+        * 192.168.205.155 (LAN)
+          * SNMP Primary: P
+          * Status: 1
+    * pgdbsrv02 (foreign ID: pgdbsrv02)
+      * building: OpenNMS
+      * interfaces:
+        * 192.168.205.154 (LAN)
+          * SNMP Primary: P
+          * Status: 1
+    * pgdbsrv01 (foreign ID: pgdbsrv01)
+      * building: OpenNMS
+      * interfaces:
+        * 192.168.205.153 (LAN)
+          * SNMP Primary: P
+          * Status: 1
+    * onmssrv02 (foreign ID: onmssrv02)
+      * building: OpenNMS
+      * interfaces:
+        * 192.168.205.152 (LAN)
+          * SNMP Primary: P
+          * Status: 1
+    * onmssrv01 (foreign ID: onmssrv01)
+      * building: OpenNMS
+      * interfaces:
+        * 192.168.205.151 (LAN)
+          * SNMP Primary: P
+          * Status: 1
+----
+
+As you can see, the cluster has `snmp-primary = N` and it has two services: _OpenNMS-JVM_ (to monitor the running _JVM_ on the active node) and _OpenNMS-PostgreSQL_ (to monitor the _PostgreSQL_ activity through _pgpool-II_).
+
+7. Create the foreign source definition.
+
+Create an _XML_ at `/tmp/OpenNMS.xml` with the following content:
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<foreign-source xmlns="http://xmlns.opennms.org/xsd/config/foreign-source" name="OpenNMS" date-stamp="2015-07-30T00:53:24.561Z">
+  <scan-interval>1w</scan-interval>
+  <detectors>
+    <detector name="ICMP" class="org.opennms.netmgt.provision.detector.icmp.IcmpDetector"/>
+    <detector name="SNMP" class="org.opennms.netmgt.provision.detector.snmp.SnmpDetector">
+      <parameter key="ipMatch" value="192.168.205.151-155"/>
+    </detector>
+    <detector name="PostgreSQL" class="org.opennms.netmgt.provision.detector.simple.TcpDetector">
+      <parameter key="port" value="5432"/>
+    </detector>
+  </detectors>
+  <policies>
+    <policy name="NoDiscoveredIPs" class="org.opennms.netmgt.provision.persist.policies.MatchingIpInterfacePolicy">
+      <parameter key="action" value="DO_NOT_PERSIST"/>
+      <parameter key="matchBehavior" value="NO_PARAMETERS"/>
+    </policy>
+  </policies>
+</foreign-source>
+----
+
+Pay attention to the _SNMP_ service.
+It is excluding the detection for the _VIP_ address (i.e. the _SNMP_ service will be detected only on the the nodes where their IPs are in the range that starts on 192.168.205.151 and ends on 192.168.205.155).
+
+Then, push it to _OpenNMS_:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# cd /tmp
+[root@onmssrv01 ~]# curl -v -d @OpenNMS.xml -u "admin:admin" http://localhost:8980/opennms/rest/requisitions/foreignSources
+----
+
+8. Synchronize the requisition
+
+[source, bash]
+----
+[root@onmssrv01 ~]# $PROVISION requisition import OpenNMS
+----
+
+Upgrading _OpenNMS_ on a cluster environment
+
+WARNING: this is a work in progress...
+
+In general it is extremely important to disable automatic updates through _YUM_.
+Any kind of upgrade procedure must be performed by an administrator.
+
+There are several possible upgrade scenarios.
+Each of them depend on which component you want to upgrade.

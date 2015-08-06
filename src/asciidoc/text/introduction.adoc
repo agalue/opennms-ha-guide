@@ -1,0 +1,38 @@
+
+// Allow GitHub image rendering
+:imagesdir: ../images
+
+== Introduction
+
+There are several ways to build a cluster for high availability.
+Also there are several technologies involved on the cluster design.
+
+For this reason, the technology selection will be based on the available resources for the selected operating system (i.e. RHEL), and the simplification of the OpenNMS maintenance.
+
+This cluster is going to work on a active-passive mode, that means, only one machine will be running at a time, and when this machine cannot perform its job, the cluster manager will redirect the resources to the standby machine.
+
+For _RHEL/CentOS 6_, the default cluster services are based on _CMAN/Ricci/Rgmanager_.
+On the other hand, for _RHEL/CentOS 7_ the cluster services are based on _Pacemaker_ (which is available as an option on _RHEL/CentOS 6.6_).
+Both technologies use _Corosync_ behind the scenes.
+
+The common elements for _OpenNMS_ are the configuration directory, the data directory and the _PostgreSQL_ database.
+The common directories are going to exist on a separate server and shared through _NFS_ (it can be another technology such as _DRBD_ or _GFS2_).
+The database will be deployed on a separate set of servers.
+
+The need for a redundant, high(er) available database-setup is important.
+When you’re using _PostgreSQL_, you can setup streaming replication quite easily in order to have your data redundant on two or more nodes.
+
+To achieve redundancy, I’ve chosen to use the built-in streaming replication of _PostgreSQL_.
+Another tool, `repmgr`, will be used for easier control of the replication between those redundant _PostgreSQL-instances_.
+The tool doesn’t replicate data itself but it allows you to easily control the replication, the standby-server(s) and monitor the status of the whole replication process.
+
+More information about link:http://www.repmgr.org[repmgr].
+
+In order to use both copies of the database-data, I will use _pgpool-II_.
+_Pgpool-II_ can pool the connections to the nodes and will monitor their status and trigger failover (by repmgr) if needed.
+_Pgpool-II_ has the capability to load balance traffic, based on the type of SQL-query.
+For example, a _SELECT query_ can perfectly be executed on a slave (read-only) node and save resources on the master (read-write) node.
+
+From the client perspectives, they will see only one server (i.e the instance on which _pgpool-II_ is running), and the failover, the standby recovery, etc. will be hidden for the users; in this case, the _OpenNMS_ servers.
+
+More information about link:http://www.pgpool.net/[pgpool-II].

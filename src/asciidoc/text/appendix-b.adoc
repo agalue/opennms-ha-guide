@@ -1,0 +1,16 @@
+
+// Allow GitHub image rendering
+:imagesdir: ../images
+
+== Appendix B
+
+Fencing script for _VirtualBox_ designed for _RHEL/CentOS 7_
+
+NOTE: If you’re running _VirtualBox_ on _Linux_, you must update the `vboxmanage` variable to point to the correct location of `VBoxManage`.
+      Also, be careful with the indentation, this is a mandatory format for any _python_ script.
+      Each level has 4 spaces for indentation.
+
+[source, python]
+----
+include::../files/fencing-stonith/fence-vb-rhel7.py[]
+----

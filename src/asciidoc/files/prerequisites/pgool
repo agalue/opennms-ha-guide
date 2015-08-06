@@ -1,0 +1,16 @@
+start(){
+  PGPOOL_START=$"Starting ${NAME} service: "
+
+  echo -n "$PGPOOL_START"
+  if [ -n "`pidofproc -p $pidfile $PGPOOLDAEMON`" ]
+  then
+      echo_success
+      echo
+      exit 0
+  fi
+
+  # Modified by Alejandro Galue <agalue@opennms.org>
+  /usr/local/bin/dbcleanup
+
+  $SU -l $PGPOOLUSER -c "$PGPOOLDAEMON -f $PGPOOLCONF $OPTS & " >> "$PGPOOLLOG" 2>&1 < /dev/null
+  sleep 2

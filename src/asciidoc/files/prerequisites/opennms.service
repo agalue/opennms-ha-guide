@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenNMS server
+Wants=pgpool.service
+Requires=network.target network-online.target
+After=pgpool.service network.target network-online.target
+
+[Service]
+User=root
+TimeoutStartSec=0
+Type=forking
+PIDFile=/opt/opennms/logs/opennms.pid
+ExecStart=/opt/opennms/bin/opennms start
+ExecStop=/opt/opennms/bin/opennms stop
+
+[Install]
+WantedBy=multi-user.target

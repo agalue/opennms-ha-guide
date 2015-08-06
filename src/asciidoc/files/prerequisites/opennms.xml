@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>opennms</short>
+  <description>OpenNMS Services with PgPool-II</description>
+  <port protocol="tcp" port="5817"/>
+  <port protocol="tcp" port="8980"/>
+  <port protocol="tcp" port="18980"/>
+  <port protocol="tcp" port="8181"/>
+  <port protocol="tcp" port="9999"/>
+  <port protocol="udp" port="162"/>
+  <port protocol="udp" port="10514"/> <!-- Check syslogd-configuration.xml -->
+</service>

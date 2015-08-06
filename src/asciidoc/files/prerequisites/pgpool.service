@@ -1,0 +1,15 @@
+[Unit]
+Description=pgpool-II
+After=syslog.target network.target
+
+[Service]
+User=postgres
+Group=postgres
+PermissionsStartOnly=true
+EnvironmentFile=-/etc/sysconfig/pgpool
+ExecStartPre=/usr/local/bin/dbcleanup
+ExecStart=/usr/bin/pgpool -f /etc/pgpool-II/pgpool.conf $OPTS
+ExecStop=/usr/bin/pgpool -f /etc/pgpool-II/pgpool.conf -m fast stop
+
+[Install]
+WantedBy=multi-user.target
