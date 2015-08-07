@@ -188,7 +188,7 @@ Then, add the script resources:
 [root@onmssrv01 ~]# ccs --addresource script name=onms_bin file=/etc/init.d/opennms
 ----
 
-IMPORTANT: the last declaration is the reason why START_TIMEOUT=0 cannot be used on /opt/opennms/etc/opennms.conf.
+IMPORTANT: The last declaration is the reason why START_TIMEOUT=0 cannot be used on /opt/opennms/etc/opennms.conf.
 
 Then, add the floating IP resource:
 
@@ -216,7 +216,7 @@ Then, add the resource references with the desired order to the cluster service 
 [root@onmssrv01 ~]# ccs --addsubservice onms_svc script ref=onms_bin
 ----
 
-IMPORTANT: as explained before, if you have issues with the NFS server, do not add a subservice for pgpool_etc.
+IMPORTANT: As explained before, if you have issues with the NFS server, do not add a subservice for pgpool_etc.
 
 The final `/etc/cluster/cluster.conf` should look like the following:
 
@@ -259,7 +259,7 @@ The final `/etc/cluster/cluster.conf` should look like the following:
 </cluster>
 ----
 
-NOTE: the `config_version` might be different, but that’s ok.
+NOTE: The `config_version` might be different, but that’s ok.
 
 Finally we can synchronize the cluster configuration across all members of the cluster:
 
@@ -316,7 +316,7 @@ http://192.168.205.150:8980/opennms
 
 There are several ways to check if the cluster works.
 
-1. Manually stop one the critical resources on the active node, the obvious one is the _OpenNMS_ application:
+(1) Manually stop one the critical resources on the active node, the obvious one is the _OpenNMS_ application:
 
 [source, bash]
 ----
@@ -350,7 +350,7 @@ Later I’ll mention how to properly restart _OpenNMS_ within a cluster.
 
 Keep in mind that the `onms_svc` will continue running on _onmssrv02_, as the failover domain was configured to do this.
 
-2. Relocate the cluster service to the standby node:
+(2) Relocate the cluster service to the standby node:
 
 [source, bash]
 ----

@@ -400,7 +400,7 @@ priority         | 100
 active           | t
 |---
 
-NOTE: that the query has been executed against the primary server.
+NOTE: The above query has been executed against the primary server.
 
 It is important to have in mind that the name of the view starts with the word "repmgr", then the underscore character ("_"), and then the name of the cluster (in this case, `opennms_cluster`, as it was defined on `repmgr.conf`); in other words: `repmgr_opennms_cluster`.
 This is the main reason why you should never use special characters when choosing the name of the cluster.
@@ -421,7 +421,7 @@ The above command can be executed on any _PostgreSQL_ server.
 Finally, you can use the following command on the primary server to see the statistics from the replication.
 
 [source, bash]
-|---
+----
 [root@pgdbsrv01 ~]# su - postgres -c "psql -x -c 'select * from pg_stat_replication;'"
 -[ RECORD 1 ]----+------------------------------
 pid              | 3391
@@ -440,7 +440,7 @@ flush_location   | 0/C001B78
 replay_location  | 0/C001B78
 sync_priority    | 0
 sync_state       | async
-|---
+----
 
 Also you should see that the replication processes are running on the standby server:
 
@@ -457,7 +457,7 @@ At this point, updates on the master should be replicated to the slave so it’s
 Before we create a sample database on the primary, let’s list the databases from the standby-node:
 
 [source, bash]
-|---
+----
 [root@pgdbsrv01 ~]# su - postgres -c "psql -c '\list'"
                                   List of databases
    Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
@@ -474,12 +474,12 @@ Create the database on the primary:
 
 [root@pgdbsrv01 ~]# su - postgres -c "psql -c 'CREATE DATABASE test'"
 CREATE DATABASE
-|---
+----
 
 Same command as we did before the _DB-create_: list the current databases on the standby:
 
 [source, bash]
-|---
+----
 [root@pgdbsrv02 ~]# su - postgres -c "psql -c '\list'"
                                   List of databases
    Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
@@ -492,7 +492,7 @@ Same command as we did before the _DB-create_: list the current databases on the
            |          |          |             |             | postgres=CTc/postgres
  test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
 (5 rows)
-|---
+----
 
 As you can see, the new database, test, got replicated to the standby.
 
@@ -855,7 +855,7 @@ Jul 29 18:58:46 onmssrv01.local pgpool[18740]: 2015-07-29 18:58:46: pid 18740: L
 Let’s test if everything is working by executing a query on the databases via _pgpool-II_:
 
 [source, bash]
-|---
+----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "\l"
 Password for user pgpool:
                                   List of databases
@@ -868,7 +868,7 @@ Password for user pgpool:
  template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
            |          |          |             |             | postgres=CTc/postgres
 (4 rows)
-|---
+----
 
 This should also work from another host that has network access to the _pgpool-II_ machine.
 
@@ -878,7 +878,7 @@ They’re executed as normal _SQL_ but will be intercepted by _pgpool-II_.
 To get the status of the nodes connected to _pgpool-II_:
 
 [source, bash]
-|---
+----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
  node_id | hostname  | port | status | lb_weight |  role
@@ -886,7 +886,7 @@ Password for user pgpool:
  0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary
  1       | pgdbsrv02 | 5432 | 2      | 0.500000  | standby
 (2 rows)
-|---
+----
 
 If for some reason, the status is not 2 or you see problems on the logs, double check the configuration of pgpool in pgpool.conf (specially the section related with the _PostgreSQL_ servers).
 It might be possible that you must re-attach the failed server:
@@ -944,7 +944,7 @@ image::pgpool-sql-failover.png[]
 Result on _pgpool-II_:
 
 [source, bash]
-|---
+----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
  node_id | hostname  | port | status | lb_weight |  role
@@ -952,7 +952,7 @@ Password for user pgpool:
  0       | pgdbsrv01 | 5432 | 3      | 0.500000  | standby
  1       | pgdbsrv02 | 5432 | 2      | 0.500000  | primary
 (2 rows)
-|---
+----
 
 You can see that the former slave (_pgdbsrv02_) has now became the primary, and the former primary (_pgdbsrv01_) has now become a standby but has an offline status (_3_).
 
@@ -1016,7 +1016,7 @@ In the meanwhile, the database has got some updates and changes so we need to ma
 
 There are two way to perform the sync operation:
 
-1. Perform a full synchronization, in other words, recreate the whole `/var/lib/pgsql/9.4/data` directory from scratch:
+(1) Perform a full synchronization, in other words, recreate the whole `/var/lib/pgsql/9.4/data` directory from scratch:
 
 [source, bash]
 ----
@@ -1038,7 +1038,7 @@ There are two way to perform the sync operation:
 
 IMPORTANT: if the command execution ask for the password configured for the repmgr user, execute the restorecon command to avoid SELinux issues when it is enforcing.
 
-2. Perform a partial synchronization which can be a lot faster than the first procedure, to synchronize only the things that have been changed during the outage on the DB server, which assumes the data directory exist and it is not corrupted. If you’re not sure about the state of the data directory, use the first procedure:
+(2) Perform a partial synchronization which can be a lot faster than the first procedure, to synchronize only the things that have been changed during the outage on the DB server, which assumes the data directory exist and it is not corrupted. If you’re not sure about the state of the data directory, use the first procedure:
 
 [source, bash]
 ----
@@ -1103,7 +1103,7 @@ Role       | Connection String
 For _pgpool-II_, we need to re-attach the failed node in order for it to be visible and usable as a standby-node:
 
 [source, bash]
-|----
+----
 [root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres 0
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
@@ -1112,7 +1112,7 @@ Password for user pgpool:
  0       | pgdbsrv01 | 5432 | 2      | 0.500000  | standby
  1       | pgdbsrv02 | 5432 | 2      | 0.500000  | primary
 (2 rows)
-|----
+----
 
 For the `pcp_attach_node` command, it is required to use the authentication credentials defined on /etc/pgpool-II/pcp.conf. Also, it is required to know the node_id of the node you want to re-attach. The "show pool_nodes" will give you all the information (including the `node_id`).
 In this case the _ID_ for _pgdbsrv01_ is `0`.
@@ -1144,7 +1144,7 @@ On _RHEL/CentOS 7_:
 When the master ( _pgdbsrv02_ ) stopped, a failover is triggered and _pgdbsrv01_ gets assigned as primary again:
 
 [source, bash]
-|----
+----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
  node_id | hostname  | port | status | lb_weight |  role
@@ -1152,7 +1152,7 @@ Password for user pgpool:
  0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary
  1       | pgdbsrv02 | 5432 | 3      | 0.500000  | standby
 (2 rows)
-|----
+----
 
 Now, sync _pgdbsrv02_ with the new primary ( _pgdbsrv01_ ) and start it (this time, use `--rsync-only` as this is an intentional action and the data directory is not corrupted):
 
@@ -1181,7 +1181,7 @@ On _RHEL/CentOS 7_:
 Finally, Re-attach _pgdbsrv02_ to _pgpool-II_ in order to use it as a slave:
 
 [source, bash]
-|----
+----
 [root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres 1
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
  node_id | hostname | port | status | lb_weight |  role
@@ -1189,7 +1189,7 @@ Finally, Re-attach _pgdbsrv02_ to _pgpool-II_ in order to use it as a slave:
  0       | pgdbsrv01| 5432 | 2      | 0.500000  | primary
  1       | pgdbsrv02| 5432 | 2      | 0.500000  | standby
 (2 rows)
-|----
+----
 
 After going trough all of the above steps, we’re back to the initial situation where _pgdbsrv01_ acts as the primary and _pgdbsrv02_ acts as the standby.
 
@@ -1219,7 +1219,7 @@ On _RHEL/CentOS 7_:
 When the master ( _pgdbsrv02_ ) stopped, a failover is triggered and _pgdbsrv01_ gets assigned as primary again:
 
 [source, bash]
-|----
+----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
  node_id | hostname  | port | status | lb_weight |  role
@@ -1227,7 +1227,7 @@ Password for user pgpool:
  0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary
  1       | pgdbsrv02 | 5432 | 3      | 0.500000  | standby
 (2 rows)
-|----
+----
 
 Now, sync _pgdbsrv02_ with the new primary ( _pgdbsrv01_ ) and start it (this time, use `--rsync-only` as this is an intentional action and the data directory is not corrupted):
 
@@ -1256,7 +1256,7 @@ On _RHEL/CentOS 7_:
 Finally, Re-attach _pgdbsrv02_ to _pgpool-II_ in order to use it as a slave:
 
 [source, bash]
-|----
+----
 [root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres 1
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
  node_id | hostname | port | status | lb_weight |  role
@@ -1264,7 +1264,7 @@ Finally, Re-attach _pgdbsrv02_ to _pgpool-II_ in order to use it as a slave:
  0       | pgdbsrv01| 5432 | 2      | 0.500000  | primary
  1       | pgdbsrv02| 5432 | 2      | 0.500000  | standby
 (2 rows)
-|----
+----
 
 After going trough all of the above steps, we’re back to the initial situation where _pgdbsrv01_ acts as the primary and _pgdbsrv02_ acts as the standby.
 

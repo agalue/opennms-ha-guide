@@ -112,7 +112,7 @@ Pacemaker Nodes:
  Offline:
 ----
 
-IMPORTANT: in case they appear offline is because _stonish_ is enabled (more on this below).
+IMPORTANT: In case they appear offline is because _stonish_ is enabled (more on this below).
 
 [source, bash]
 ----
@@ -240,7 +240,7 @@ op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 ----
 
-IMPORTANT: if you have issues with the _NFS_ permissions for the _pgpool-II_ configuration directory, do not add a resource for it.
+IMPORTANT: If you have issues with the _NFS_ permissions for the _pgpool-II_ configuration directory, do not add a resource for it.
 
 Create the cluster resources for the application using _systemd_:
 
@@ -420,15 +420,6 @@ https://www.hastexo.com/blogs/martin/2012/07/11/failover-testing-some-technical-
 
 One way to test failover is by manually stopping one the critical resources on the active node, the obvious one is the _OpenNMS_ application:
 
-On _RHEL/CentOS 6_:
-
-[source, bash]
-----
-[root@onmssrv01 ~]# service opennms stop
-----
-
-On _RHEL/CentOS 7_:
-
 [source, bash]
 ----
 [root@onmssrv01 ~]# systemctl stop opennms
@@ -560,11 +551,11 @@ onmssrv02: Starting Cluster (corosync)...
 
 If you remember how the cluster was configured with _CMAN/Rgmanager_, you can infer that there is one feature that was not implemented with _Pacemaker_.
 
-With _rgmanager_, we’ve created a failover domain with a `nofailback` property.
+With _Rgmanager_, we’ve created a failover domain with a `nofailback` property.
 That means, when the primary node dies, the resources will be moved to the secondary node, but they will remain running on that node even if the primary is back to business.
 
 On the other hand, this is not the case with the resources on _Pacemaker_.
 There is a mandatory constraint created automatically when the resource group is created that gives priority to the node on which the group was created, in this case _onmssrv01_.
 That means, if _onmssrv01_ has a problem, when it is back online, all the resources will be moved to this server.
 
-I haven’t found a way to behave like _Rgmanager_.
+I haven’t found a way to make _Pacemaker_ behaves like _Rgmanager_.

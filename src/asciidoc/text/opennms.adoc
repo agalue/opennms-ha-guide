@@ -72,7 +72,7 @@ IMPORTANT: Note that the start timeout is 3 minutes.
            In case _OpenNMS_ is able to start in less time when it is fully loaded in average, the start timeout can be reduced.
            It might be the case where the time must be increased, so be sure the time is accurate before start configuring the cluster.
 
-IMPORTANT: do not set `START_TIMEOUT` to be `0`, otherwise the cluster won’t work.
+IMPORTANT: Do not set `START_TIMEOUT` to be `0`, otherwise the cluster won’t work.
            As mentioned, the timeout must be enough to be sure that _OpenNMS_ is running without mistakes.
 
 In case you need more _heap space_, go ahead and change it accordingly to the size of the network you’re going to manage; assuming you’re not using the _Vagrant VMs_.
@@ -368,7 +368,7 @@ Mount the filesystems on each server to make sure that works.
 [root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II/
 ----
 
-IMPORTANT: make sure that the permissions on `/etc/pgpool-II/` are correct.
+IMPORTANT: Make sure that the permissions on `/etc/pgpool-II/` are correct.
            If they are not correct (i.e. like showing nobody instead of _postgres_ as the owner of the files), validate with the _NFS_ administrators why it is not working.
            Besides the _nobody_ user, you should see the following message on `/var/log/messages`:
 

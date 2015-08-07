@@ -60,14 +60,14 @@ Remember to use the cluster service to perform the restart and avoid using the o
 
 Now, proceed to configure the requisition and start monitoring the cluster.
 
-1. Install _SNMP_ on all the machines.
+(1) Install _SNMP_ on all the machines.
 
 [source, bash]
 ----
 [root@onmssrv01 ~]# yum install net-snmp net-snmp-utils -y
 ----
 
-2. Configure the internal firewall to accept connections on port _UDP 161_, on all the machines.
+(2) Configure the internal firewall to accept connections on port _UDP 161_, on all the machines.
 
 On _RHEL/CentOS 6_:
 
@@ -108,7 +108,7 @@ Then, execute the following commands on all the servers:
 [root@onmssrv01 ~]# firewall-cmd --add-service=snmp
 ----
 
-3. Configure _SNMP_ by editing `/etc/snmp/snmp.conf` and adding the following settings, on all the machines.
+(3) Configure _SNMP_ by editing `/etc/snmp/snmp.conf` and adding the following settings, on all the machines.
 
 [source, bash]
 ----
@@ -119,7 +119,7 @@ view    all        included    .1    80
 access  onmsGroup  ""          any   noauth     0    all    none   none
 ----
 
-4. Enable and start the _SNMP_ service on all the machines.
+(4) Enable and start the _SNMP_ service on all the machines.
 
 On _RHEL/CentOS 6_:
 
@@ -137,7 +137,7 @@ On _RHEL/CentOS 7_:
 [root@onmssrv01 ~]# systemctl start snmpd
 –--
 
-5. Configure the _SNMP_ community in _OpenNMS_.
+(5) Configure the _SNMP_ community in _OpenNMS_.
 
 From the cluster node on which _OpenNMS_ is running, execute the following commands to configure the _SNMP_ community:
 
@@ -151,7 +151,7 @@ From the cluster node on which _OpenNMS_ is running, execute the following comma
 
 The community string is `0penNMS!`, and the version is _2c_.
 
-6. Create the requisition.
+(6) Create the requisition.
 
 [source, bash]
 ----
@@ -229,7 +229,7 @@ Here is how the requisition looks like:
 
 As you can see, the cluster has `snmp-primary = N` and it has two services: _OpenNMS-JVM_ (to monitor the running _JVM_ on the active node) and _OpenNMS-PostgreSQL_ (to monitor the _PostgreSQL_ activity through _pgpool-II_).
 
-7. Create the foreign source definition.
+(7) Create the foreign source definition.
 
 Create an _XML_ at `/tmp/OpenNMS.xml` with the following content:
 
@@ -267,19 +267,9 @@ Then, push it to _OpenNMS_:
 [root@onmssrv01 ~]# curl -v -d @OpenNMS.xml -u "admin:admin" http://localhost:8980/opennms/rest/requisitions/foreignSources
 ----
 
-8. Synchronize the requisition
+(8) Synchronize the requisition
 
 [source, bash]
 ----
 [root@onmssrv01 ~]# $PROVISION requisition import OpenNMS
 ----
-
-Upgrading _OpenNMS_ on a cluster environment
-
-WARNING: this is a work in progress...
-
-In general it is extremely important to disable automatic updates through _YUM_.
-Any kind of upgrade procedure must be performed by an administrator.
-
-There are several possible upgrade scenarios.
-Each of them depend on which component you want to upgrade.

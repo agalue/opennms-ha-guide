@@ -4,6 +4,14 @@
 
 == Upgrading OpenNMS on a cluster environment
 
+WARNING: This is a work in progress...
+
+In general it is extremely important to disable automatic updates through _YUM_.
+Any kind of upgrade procedure must be performed by an administrator.
+
+There are several possible upgrade scenarios.
+Each of them depend on which component you want to upgrade.
+
 === PostgreSQL
 
 The only possible way to perform a live upgrade (i.e. without shutting down _pgpool-II_ or the _OpenNMS_ cluster) is when upgrading to the same code base. For example, this document was designed for PostgreSQL 9.4, so you can upgrade to any 9.4 release but not to a newer release like 9.5. Upgrading to a 9.5 is not considered an upgrade, it is considered a migration because the data structure can be different.
@@ -21,8 +29,8 @@ If we’re talking about the same code base, here is the procedure:
 
 ==== Primary server
 
-Perform a failover to promote the standby server.
-Once the secondary has been promoted, perform the upgrade using the procedure for the standby.
+. Perform a failover to promote the standby server.
+. Once the secondary has been promoted, perform the upgrade using the procedure for the standby.
 
 === Pgpool-II
 
@@ -43,8 +51,8 @@ For this reason, upgrading to 3.5 or higher is considered a migration.
 
 ==== Primary server
 
-Use the cluster command to migrate the cluster resources to the standby machine.
-Once all the services are running on the other server, upgrade the packages using the procedure for the standby.
+. Use the cluster command to migrate the cluster resources to the standby machine.
+. Once all the services are running on the other server, upgrade the packages using the procedure for the standby.
 
 === Meridian
 
@@ -54,31 +62,31 @@ The following procedure assumes that you’re not planing to upgrade to a major 
 
 ==== Standby Server
 
-Log into the standby server (use the cluster commands to verify that _pgpool/opennms_ are not running).
-Perform the upgrade of the _Meridian_ packages (be sure that the licensing is valid, otherwise the access to the _Meridian_ repository will be denied).
-At this time, the `/opt/opennms/etc` and `/var/opennms` has been populated with the files on the version you’ve installed.
+. Log into the standby server (use the cluster commands to verify that _pgpool/opennms_ are not running).
+. Perform the upgrade of the _Meridian_ packages (be sure that the licensing is valid, otherwise the access to the _Meridian_ repository will be denied).
+. At this time, the `/opt/opennms/etc` and `/var/opennms` has been populated with the files on the version you’ve installed.
 It is important to understand which are the changes performed on the configuration files in order to merge them into the production configuration.
 
-Mount temporarily the `/opt/opennms/share` directory from the _NFS_ server into the upgraded machine, for example: `/mnt/onms_var`.
-Execute `diff -ur /var/opennms/etc-pristine/ /mnt/onms_var > /mnt/config-changes.diff`
-Check the `config_changes.diff` file to understand the changes added from the version of _Meridian_ you used to have and the current one you’re installing.
+.. Mount temporarily the `/opt/opennms/share` directory from the _NFS_ server into the upgraded machine, for example: `/mnt/onms_var`.
+.. Execute `diff -ur /var/opennms/etc-pristine/ /mnt/onms_var > /mnt/config-changes.diff`
+.. Check the `config_changes.diff` file to understand the changes added from the version of _Meridian_ you used to have and the current one you’re installing.
 If the content doesn’t have conflicts with your configuration changes, continue with (`d`).
 Otherwise, go to (`4`)
-Mount temporarily the `/opt/opennms/etc` directory from the _NFS_ server into the upgraded machine, for example: `/mnt/onms_etc`.
-Copy the content of `/mnt/onms_etc` to another location to avoid change the files on the _NFS server_ (because the active server is still using them): `rsync -avr /mnt/onms_etc /tmp/onms_etc`.
-Go to `/tmp/onms_etc`
-Execute: `patch -p1 < /tmp/config-changes.diff`, and analyze the results. If there are no conflicts, `/tmp/onms_etc` contains your changes and the new changes.
+.. Mount temporarily the `/opt/opennms/etc` directory from the _NFS_ server into the upgraded machine, for example: `/mnt/onms_etc`.
+.. Copy the content of `/mnt/onms_etc` to another location to avoid change the files on the _NFS server_ (because the active server is still using them): `rsync -avr /mnt/onms_etc /tmp/onms_etc`.
+.. Go to `/tmp/onms_etc`
+.. Execute: `patch -p1 < /tmp/config-changes.diff`, and analyze the results. If there are no conflicts, `/tmp/onms_etc` contains your changes and the new changes.
 If not, you can either fix the conflicts manually, or discard the changes.
-If you have fixed the conflicts, or the patch was applied without errors, you can copy the changes back to the _NFS_ mount point.
+.. If you have fixed the conflicts, or the patch was applied without errors, you can copy the changes back to the _NFS_ mount point.
 I know the new server is still using it but it won’t be a problem if no one is making changes on the active _OpenNMS_ machine.
-Unmount the temporary filesystems if any.
-Reboot the server, to ensure it will properly starts.
-Remove the content of `/opt/opennms/etc` and `/var/opennms`, or move them to a different location.
+. Unmount the temporary filesystems if any.
+. Reboot the server, to ensure it will properly starts.
+. Remove the content of `/opt/opennms/etc` and `/var/opennms`, or move them to a different location.
 
 ==== Primary Server
 
-Use the cluster command to migrate the cluster resources to the standby machine.
-Once all the services are running on the other server, upgrade the packages using the procedure for the standby.
+. Use the cluster command to migrate the cluster resources to the standby machine.
+. Once all the services are running on the other server, upgrade the packages using the procedure for the standby.
 
 === Horizon
 
@@ -164,8 +172,11 @@ If everything works fine, you can perform the migration.
 . Upgrade OpenNMS on each cluster node.
 . Remove everything from `/opt/opennms/etc` and `/var/opennms` on each node.
 . On one server, mount the shared resources manually and start _pgpool-II_.
-. Execute the install script. If everything went well, mount the resources umount the resources.
-. Start the cluster. Now, if you want to be 100% sure that the above procedure won’t have issues, you can create a copy of the production database, and then test the install script on the test server prior performing the migration.
+. Execute the install script.
+. If everything went well, mount the resources umount the resources.
+. Start the cluster.
+
+Now, if you want to be 100% sure that the above procedure won’t have issues, you can create a copy of the production database, and then test the install script on the test server prior performing the migration.
 
 Having the files ready on _NFS_ after stopping the cluster, and pre-testing the schema update will minimize the downtime of the cluster.
 

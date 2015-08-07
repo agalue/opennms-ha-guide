@@ -415,6 +415,15 @@ To avoid reboot the system, fix the ownership of the directory:
 [root@onmssrv01 ~]# chown postgres:postgres /var/run/pgpool
 ----
 
+Also, it is important to update the default options used by `pgpool` when it initializes.
+These options are defined on `/etc/sysconfig/pgpool`.
+Be sure they look like the following:
+
+[source, bash]
+----
+OPTS=" -n --discard-status"
+----
+
 Similarly, by default the _systemd_ initialization script for _OpenNMS_ will force `START_TIMEOUT=0`.
 In order to avoid potential problems when checking the _OpenNMS_ state, it is better to disable this option.
 
@@ -424,15 +433,6 @@ The content should look like this:
 [source, bash]
 ----
 include::../files/prerequisites/opennms.service[]
-----
-
-Also, it is important to update the default options used by `pgpool` when it initializes.
-These options are defined on `/etc/sysconfig/pgpool`.
-Be sure they look like the following:
-
-[source, bash]
-----
-OPTS=" -n --discard-status"
 ----
 
 After updating the files, execute the following command:
@@ -615,7 +615,7 @@ The following are the ports to open on each cluster member (i.e. the _OpenNMS_ m
 On each _OpenNMS_ servers, edit the `/etc/sysconfig/iptables` file and add the following rules before the first `REJECT` entry:
 
 [source]
-|----
+----
 -A INPUT -p udp -m multiport --dports 5404,5405 -j ACCEPT
 -A INPUT -p tcp --dport 11111 -j ACCEPT
 -A INPUT -p tcp --dport 21064 -j ACCEPT
@@ -628,7 +628,7 @@ On each _OpenNMS_ servers, edit the `/etc/sysconfig/iptables` file and add the f
 -A INPUT -p tcp --dport 8181 -j ACCEPT
 -A INPUT -p tcp --dport 9999 -j ACCEPT
 -A INPUT -p udp --dport 162 -j ACCEPT
-|----
+----
 
 On each _PostgreSQL_ servers, open the port _TCP 5432_.
 To do this, edit the `/etc/sysconfig/iptables` file, and add the following rules before the first `REJECT` entry:
