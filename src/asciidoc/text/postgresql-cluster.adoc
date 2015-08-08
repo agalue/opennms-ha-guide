@@ -752,7 +752,7 @@ Jul  7 22:26:39 onmssrv01 nfsidmap[102421]: nss_getpwnam: name 'nobody' do
 
 The current workaround is to make the changes on one server and then _rsync_ the directory to the other server, as explained before.
 
-==== Test Pgpool-II
+=== Test Pgpool-II
 
 If all went well, at this point, you should have a working installation of _pgpool-II_ that will execute queries on the replicated _PostgreSQL_ nodes.
 
