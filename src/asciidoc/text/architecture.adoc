@@ -37,7 +37,7 @@ In the extreme, an indefinite fencing wait time can occur if fencing is not conf
 Ways to induce fencing include powering off a node with a remote power switch, disabling a _Fiber Channel_ switch port, or powering off the clustered node's virtual machine through a _VM Manager_ such as  _vCenter_.
 
 _STONITH_ footnote:["Shoot The Other Node In The Head" or "Shoot The Offending Node In The Head"], sometimes called _STOMITH_ footnote:["Shoot The Other Member/Machine In The Head"], is a technique for fencing in computer clusters.
-The terms "Fence" (or "Fencing") or _STONITH_  are used interchangeably within this document.
-Typically _CMAN_ environments uses the term _Fencing_, while _Pacemaker_ environment uses the term _Stonith_.
+The terms "_Fence_," "_Fencing_," or "_STONITH_"  are used interchangeably within this document.
+Typically _CMAN_ environments uses the term _Fencing_, while _Pacemaker_ environment uses the term _STONITH_.
 
 For the final deployment, it is recommended to investigate which fencing mechanism works better and configure it properly to avoid "split-brain" situations and potential corruption of the data.
