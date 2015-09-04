@@ -43,7 +43,7 @@ include::../files/prerequisites/Vagrantfile[]
 ----
 
 The above file will setup 5 machines using _CentOS 6.6_.
-In order to use _CentOS 7_, replace the value of the `config.vm.box` attribute from `chef/centos-6.6` to `chef/centos-7.1`.
+In order to use _CentOS 7_, replace the value of the `config.vm.box` attribute from `bento/centos-6.7` to `bento/centos-7.1`.
 If you want to use _CentOS 6_ on some machines and _CentOS 7_ on other machines, just add a `:box` attribute on the _JSON_ configuration for the boxes on which you want a different OS than the default (the default box is `config.vm.box`).
 
 To startup the VMs, execute the following command:

@@ -30,7 +30,7 @@ boxes = [
   }
 ]
 Vagrant.configure(2) do |config|
-  config.vm.box = "chef/centos-6.6"
+  config.vm.box = "bento/centos-6.7"
   boxes.each do |opts|
     config.vm.define opts[:name] do |config|
       if opts[:box]
