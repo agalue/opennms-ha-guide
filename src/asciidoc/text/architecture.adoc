@@ -10,32 +10,34 @@ image::basic-architecture.png[]
 The above diagram describes the basic architecture.
 It is important to notice that _CMAN/Ricci/Rgmanager_ will be used for _RHEL/CentOS 6_, and _Pacemaker_ will be used for _RHEL/CentOS 7_.
 
-The _RedHat Cluster_ consist on two machines (or virtual machines) for the _Primary OpenNMS_, and the _Standby OpenNMS_.
+The _RHEL cluster_ consists of two machines, physical or virtual, for the _Primary OpenNMS_, and the _Standby OpenNMS_.
 
 Each _OpenNMS_ machine will have _pgpool-II_ installed.
-This will be the gateway to the _PostgreSQL Cluster_.
-In other words, in terms of _OpenNMS_, the database is installed locally, even knowing that _PostgreSQL_ is not running on the _OpenNMS_ servers.
+This will be the gateway to the _PostgreSQL cluster_.
+From the _OpenNMS_ server perspective, the database is installed locally, though _PostgreSQL_ is not running on the _OpenNMS_ servers.
 
-The _pgpool-II_ configuration is another common resource that can be hosted on an external machine (like the _OpenNMS_ configuration and data directories).
+Like the _OpenNMS_ configuration and data directories, the _pgpool-II_ configuration is another common resource that can be hosted on an external machine.
 
-The cluster will provide a floating IP, which will be used by the operators to access the active _OpenNMS_ server.
+A floating IP will provided by the cluster and used by the operators to access the active _OpenNMS_ server.
 
 In case of a failure, the floating IP, the shared file systems, the _pgpool-II_ application and the _OpenNMS_ application will be moved to the standby server.
 
-The _PostgreSQL Database_ will have its own cluster using streaming replication between the master and the standby server, and will use _pgpool-II_ to access the _PostgreSQL Cluster_.
+The _PostgreSQL database_ will have its own cluster using streaming replication between the master and the standby server. _Pgpool-II_ will be used to access the _PostgreSQL cluster_.
 
-Because security is important, _SELinux_ must be configured to be "enforcing", and the internal firewall (iptables on _RHEL/CentOS 6_, or _firewalld_ on _RHEL/CentOS 7_) must be enabled on all the servers involved on this cluster solution.
+Because security is important, _SELinux_ must be configured to be "enforcing." The internal firewall, either iptables on _RHEL/CentOS 6_ or _firewalld_ on _RHEL/CentOS 7_, must be enabled on all the servers involved in the cluster.
 
-=== Fencing/Stonith
+=== Fencing/STONITH
 
-Fencing is a vital part of clustering which helps maintain data integrity by ensuring that out-of-sync, misbehaving nodes are removed from the cluster before they can do damage.
+Fencing is a vital part of clustering which helps maintain data integrity.
+It ensures that out-of-sync, misbehaving nodes are removed from the cluster before they can do damage.
 
-This is one of the first things you’ll want to configure, if you want to avoid trouble. Nodes without a configured fence device sometimes can hang the entire cluster, as the other nodes wait for it to be fenced (which will be a very very long time if you haven’t configured fencing at all).
-
-This can be accomplished in a variety of ways; for example, powering off the node via a remote power switch, disabling a _Fiber Channel_ switch port, or powering off the virtual machine on which the cluster node is hosted through the _VM Manager_ (like _vCenter_).
+Fencing is one of the first things to be configured for trouble avoidance. 
+Nodes without a configured fence device sometimes can hang the entire cluster as the other nodes wait for it to be fenced. 
+In the extreme, an indefinite fencing wait time can occur if fencing is not configured.
+Ways to induce fencing include powering off a node with a remote power switch, disabling a _Fiber Channel_ switch port, or powering off the clustered node's virtual machine through a _VM Manager_ such as  _vCenter_.
 
 _STONITH_ footnote:["Shoot The Other Node In The Head" or "Shoot The Offending Node In The Head"], sometimes called _STOMITH_ footnote:["Shoot The Other Member/Machine In The Head"], is a technique for fencing in computer clusters.
-You can see either the term "Fence" (or "Fencing"), or the term _STONITH_ interchangeable on this document.
-Typically _CMAN_ environments uses the term _Fencing_, while _Pacemaker_ environment uses the term _Stonith_.
+The terms "_Fence_," "_Fencing_," or "_STONITH_"  are used interchangeably within this document.
+Typically _CMAN_ environments uses the term _Fencing_, while _Pacemaker_ environment uses the term _STONITH_.
 
-It is recommended to investigate which fencing mechanism works better for the final deployment and configure it properly to avoid "split-brain" situations and potential corruption of the data.
+For the final deployment, it is recommended to investigate which fencing mechanism works better and configure it properly to avoid "split-brain" situations and potential corruption of the data.

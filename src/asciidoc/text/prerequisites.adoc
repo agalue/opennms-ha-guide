@@ -4,7 +4,7 @@
 
 == Pre-requisites
 
-The RHEL/CentOS Linux Distribution will be used for this solution. The instruction provides details for the last 2 mayor versions: 6 and 7.
+_RHEL/CentOS_ Linux distribution will be used for this solution.  The following instructions are applicable to versions 6 and 7.
 
 For references purposes, the following machines will used:
 
@@ -22,18 +22,18 @@ The virtual IP will be: +
 
 _onmssrvvip_ : `192.168.205.150`
 
-The IP addresses must be configured statically on each machine prior starting configuring the cluster.
+Static IP addresses must be configured on each machine prior to starting the cluster.
 
 === Testing Lab Setup
 
-Ignore this section if you want to use real servers for this deployment.
+Ignore this section to use physical servers for this deployment.
 
-For the testing environment the following tools must be downloaded and installed on your system:
+Download and install the following tools on a test system:
 
 Vagrant (www.vagrantup.com)
 VirtualBox (www.virtualbox.org)
 
-Your testing machine must have at least 8 GB of RAM with a quad-core processor, as the testing environment will require 5 VMs, and two of them requires 2GB, for a total of 7GB.
+The test system must have at least 8 GB of RAM with a quad-core processor.  The test environment will require 5 VMs. Two VMs require 2GB for a total of 7GB.
 
 Create a directory and inside of it create a file called Vagrantfile, with the following content:
 
@@ -43,8 +43,8 @@ include::../files/prerequisites/Vagrantfile[]
 ----
 
 The above file will setup 5 machines using _CentOS 6.6_.
-In order to use _CentOS 7_, replace the value of the `config.vm.box` attribute from `bento/centos-6.7` to `bento/centos-7.1`.
-If you want to use _CentOS 6_ on some machines and _CentOS 7_ on other machines, just add a `:box` attribute on the _JSON_ configuration for the boxes on which you want a different OS than the default (the default box is `config.vm.box`).
+In order to use _CentOS 7_, replace the value of the `config.vm.box` attribute from `bento/centos-6.6` to `bento/centos-7.1`.
+To use _CentOS 6_ on some machines and _CentOS 7_ on other machines, add a `:box` attribute on the _JSON_ configuration for the systems using a different OS than the default (the default box is `config.vm.box`).
 
 To startup the VMs, execute the following command:
 
@@ -64,7 +64,7 @@ vagrant ssh onmssrv01
 
 _Vagrant_ automatically generates a user called `vagrant` with _sudo_ access without password.
 
-As almost all the commands used on this tutorial requires _root_ access, you could either become _root_ (and change the _root_ password on each VM), or use the _vagrant_ user with `sudo` for all the commands.
+As almost all the commands used on this tutorial requires _root_ access, either become _root_ (and change the _root_ password on each VM), or use the _vagrant_ user with `sudo` for all the commands.
 
 By default, _SELinux_ is configured as _permissive_ in `/etc/sysconfig/selinux`.
 For full security, it is recommended to change it to be _enforcing_ and restart the VMs, as this is the default option in _RHEL/CentOS 6_ and _7_.
@@ -76,13 +76,13 @@ To restart all the VMs with Vagrant:
 $ vagrant reload
 ----
 
-Also, the internal firewall must be enabled by default.
+In addition, the internal firewall must be enabled by default.
 There is a section designated to explain how to properly configure the internal firewall on each _Linux_ distribution.
 
 === Hostnames
 
-Before we will get started with the setup, it’s important that all nodes in the setup can connect to each other via their hostname.
-This could be achieve by either adding the involved hosts to the `/etc/hosts` file, or use the _FQDN_ registered on the _DNS_ servers.
+Before starting the setup process, it is important that all nodes in the setup can connect to each other via their hostname.
+This can be achieve by either adding the involved hosts to the `/etc/hosts` file, or use the _FQDN_ registered on the _DNS_ servers.
 
 If _DNS_ is not an option, the `/etc/hosts` should look like the following on each server:
 
@@ -121,22 +121,22 @@ $ vagrant reload
 === PostgreSQL Repository
 
 The standard _RHEL/CentOS_ repositories do not contain the packages for _pgpool-II_ or _repmgr_.
-Also, the supported _PostgreSQL_ version for _RHEL/CentOS 6_ is _8.4_, and for _RHEL/CentOS 7_ is _9.2_.
+Additionally, the supported _PostgreSQL_ version for _RHEL/CentOS 6_ is _8.4_, and for _RHEL/CentOS 7_ is _9.2_.
 
-Because this solution required the usage of _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, we need to add the _PGDG_ repository.
+Because this solution required the usage of _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, the  _PGDG_ repository needs to be added.
 
-The _PGDG_ provides packages for _pgpool-II_, but we are going to use a different repository because I found a dependency issue with the _RPM_ provided on the _PGDG_ repository.
+The _PGDG_ provides packages for _pgpool-II_, but a different repository will be used from additional dependency issues with the _RPM_ provided on the _PGDG_ repository.
 
 _PGDG_ is a project that maintains _RPM_ builds of _PostgreSQL_ and related components.
-You can find more information and repo-URL’s for _PGDG_ here:
+More information and repo-URL’s for _PGDG_ can be found here:
 
 http://yum.postgresql.org/repopackages.php
 
-The _pgpool-II_ maintainers, provides information about their _YUM_ repository here:
+Information about the _pgpool-II_ _YUM_ repository is provided here:
 
 http://www.pgpool.net/mediawiki/index.php/Yum_Repository
 
-Let’s add the _PGDG_ repo on all nodes:
+Add the _PGDG_ repo on all nodes:
 
 [source]
 ----
@@ -148,7 +148,7 @@ Let’s add the _PGDG_ repo on all nodes:
 
 For _RHEL/CentOS 7_, replace `rhel-6` with `rhel-7`.
 
-As mentioned before, we’re going to use the following repository for _pgpool-II_, which must be installed only on the _Pgpool-II_ server (in this case, the _OpenNMS_ servers).
+As previously mentioned, use the following repository for _pgpool-II_.  This repository must be installed only on the _Pgpool-II_ server, which are the _OpenNMS_ servers in this case.
 
 [source]
 ----
@@ -158,7 +158,7 @@ As mentioned before, we’re going to use the following repository for _pgpool-I
 
 For _RHEL/CentOS 7_, replace `rhel-6` with `rhel-7`.
 
-To avoid version conflicts between the two versions of _pgpool-II_ and _libmemcached_, edit the `/etc/yum.repos.d/pgdg-94-centos.repo` file (i.e. the _PGDG_ repository), to exclude _libmemcached_ by adding the following line at the end of the section called `pgdb94`, on the _OpenNMS_ servers:
+To avoid version conflicts between the two versions of _pgpool-II_ and _libmemcached_, edit the _PGDG_ repository, `/etc/yum.repos.d/pgdg-94-centos.repo` file.  Exclude _libmemcached_ by adding the following line at the end of the section called `pgdb94`.  This is done on the _OpenNMS_ servers:
 
 [source]
 ----
@@ -171,18 +171,18 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-PGDG-94
 exclude=libmemcached*
 ----
 
-If you forget this step, you’ll get errors when executing `yum update`.
+Forgetting this step will result in errors when executing `yum update`.
 
 === OpenNMS Repository
 
 ==== Horizon
 
-The first step is to install the _opennms-repo_ _RPM_ appropriate for your distribution.
+The first step is to install the _opennms-repo_ _RPM_ appropriate for distribution in use.
 This contains the information _YUM_ needs to get _OpenNMS_ package information for installing.
 
-To do so, find the appropriate release _RPM_ from link:http://yum.opennms.org/[yum.opennms.org].
+Find the appropriate release _RPM_ from link:http://yum.opennms.org/[yum.opennms.org].
 
-Then all you should need to do is install that repo package (as `root`):
+Then install that repo package (as `root`):
 
 [source]
 ----
@@ -196,8 +196,8 @@ This solution has been tested with _OpenNMS Horizon 14_, _15_ and _16_.
 
 ==== Meridian
 
-When you buy a _Meridian_ license, you’ll get the credentials to access the private repository that contains the _RPM_ packages.
-Once you have the credentials, create a _YUM_ repository file called `/etc/yum.repos.d/opennms-meridian.repo`, with the following content on each _OpenNMS_ server:
+When purchasing a _Meridian_ license, credentials will be given to access the private repository that contains the _RPM_ packages.
+With the private repository credentials, create a _YUM_ repository file called `/etc/yum.repos.d/opennms-meridian.repo` with the following content on each _OpenNMS_ server:
 
 [source]
 ----
@@ -235,7 +235,7 @@ On the database servers, install the packages for PostgreSQL Server and repmgr:
 ----
 
 At this point, the `postgres` user must exist on all the 4 machines.
-You can check it with the following command:
+Verify with the following command:
 
 [source, bash]
 ----
@@ -263,7 +263,7 @@ For Horizon:
 [root@onmssrv02 ~]# yum install 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
 
-If you’re planning to use _RRDtool_ with _Horizon_ and you’re using _RHEL/CentOS 6_, it is recommended to download the `rrdtool` and `rrdtool-perl` packages (version 1.4.7) from http://packages.express.org/rrdtool/, instead of using the packages from the distribution.
+To use _RRDtool_ with _Horizon_ and _RHEL/CentOS 6_, it is recommended to download the `rrdtool` and `rrdtool-perl` packages (version 1.4.7) from http://packages.express.org/rrdtool/, instead of using the packages from the distribution.
 For _RHEL/CentOS 7_, use the `rrdtool` packages available for the distribution.
 
 For Meridian:
@@ -278,7 +278,7 @@ For Meridian:
 
 _Meridian_ provides _RRDtool_ and it is enabled by default.
 
-IMPORTANT: Do not make _OpenNMS_ to start with the operating system, because it will be managed by the cluster services.
+IMPORTANT: Do not make _OpenNMS_ to start with the operating system.  Instead it will be managed by the cluster services.
 
 ==== RedHat Cluster Packages
 
@@ -331,7 +331,7 @@ It is always recommended to keep the OS up to date, so at this point it is a goo
 ----
 
 After updating all packages, it is recommended to reboot all machines.
-If you’re using the _Vagrant lab_, use the following command:
+For the _Vagrant lab_, use the following command:
 
 [source, bash]
 ----
@@ -378,7 +378,7 @@ Make sure up update the ownership and the permissions on the file:
 [root@pgdbsrv02 ~]# chown postgres:postgres /var/lib/pgsql/9.4/cleanup.sh
 ----
 
-Now, it is important to tune the initialization scripts properly.
+It is important to tune the initialization scripts properly.
 
 ==== SysV Initialization Scripts (RHEL/CentOS 6)
 
@@ -390,7 +390,7 @@ Here is how the content should look like:
 include::../files/prerequisites/pgpool[]
 ----
 
-WARNING: Be careful when upgrading the installed packages because the files modified above might be overridden and will require to be updated again.
+WARNING: Be careful when upgrading the installed packages! The files modified above may be overridden and will require updating again.
 
 ==== Systemd Initialization Scripts (RHEL/CentOS 7)
 
@@ -402,7 +402,7 @@ Edit the `/lib/systemd/system/pgpool.service` file and make sure the content loo
 include::../files/prerequisites/pgpool.service[]
 ----
 
-Then, edit `/usr/lib/tmpfiles.d/pgpool-II-pg94.conf` and make sure it contents look like the following:
+Edit `/usr/lib/tmpfiles.d/pgpool-II-pg94.conf` and make sure the contents look like the following:
 
 ----
 include::../files/prerequisites/pgpool-II-pg94.conf[]
@@ -415,7 +415,7 @@ To avoid reboot the system, fix the ownership of the directory:
 [root@onmssrv01 ~]# chown postgres:postgres /var/run/pgpool
 ----
 
-Also, it is important to update the default options used by `pgpool` when it initializes.
+It is important to update the default options used by `pgpool` when it initializes.
 These options are defined on `/etc/sysconfig/pgpool`.
 Be sure they look like the following:
 
@@ -444,7 +444,7 @@ After updating the files, execute the following command:
 
 Remember to do the same on _onmssrv02_.
 
-WARNING: Be careful when upgrading the installed packages because the files modified above might be overridden and will require to be updated again.
+WARNING: Be careful when upgrading the installed packages! The files modified above may be overridden and will require updating again.
 
 === Public Key Authentication
 
@@ -468,7 +468,8 @@ The key fingerprint is:
 22:fd:26:d2:0b:a4:30:62:a8:99:37:03:b9:2e:25:89 postgres@pgdbsrv01.local
 ----
 
-Once you have the _SSH_ keys, to allow all machines to connect to each other an accept each other’s key, we’ll need to add the generated public keys from all hosts to `/var/lib/pgsql/.ssh/authorized_keys`.
+Once the _SSH_ keys are aquired, add the generated public keys from all hosts to `/var/lib/pgsql/.ssh/authorized_keys`.
+This will allow all machines to connect to each other and accept each host's key.
 
 To show the public _RSA-key_, use the following command on each server:
 
@@ -491,8 +492,10 @@ ssh-rsa AAAAB3...== postgres@pgdbsrv02.local
 
 The actual keys have been omitted for simplification purposes.
 
-Since we really want unattended access (so no password or any other question), I’ll also add all hosts to the `known_hosts`-file.
-This prevents the question to add the hosts fingerprint on the first connection (be sure to execute the following command on all the servers):
+Unattended access allows for no password or other validation.
+Because this is desired, add all hosts to the `known_hosts`-file.
+This prevents the question to add the hosts fingerprint on the first connection.
+Be sure to execute the following command on all the servers:
 
 [source, bash]
 ----
@@ -518,8 +521,8 @@ Be sure the to fix the permissions of the files on each server:
 [root@pgdbsrv01 ~]# restorecon -R  /var/lib/pgsql/
 ----
 
-It’s a good thing to test the authentication now, by just trying to _SSH_ between all nodes (as the _postgres_ user).
-You shouldn’t get any prompt at all and be presented with the other host’s command prompt:
+Now is a good time to test the configured authentication by trying to _SSH_ between all nodes as the _postgres_ user.
+When working properly, the target host's prompt should return without any other validation:
 
 [source, bash]
 ----
@@ -564,8 +567,8 @@ The first thing to do is enable and start `iptables` on all servers:
 [root@onmssrv01 ~]# chkconfig iptables on
 ----
 
-Now, the file `/etc/sysconfig/iptables` should exist.
-Edit this file on both servers, and add the following content before the `COMMIT` instruction and save the file:
+The file `/etc/sysconfig/iptables` should now exist.
+Edit this file on both servers, add the following content before the `COMMIT` instruction, and save the file:
 
 [source]
 ----
@@ -578,7 +581,7 @@ Edit this file on both servers, and add the following content before the `COMMIT
 ----
 
 The above instructions are the default content for a standard _CentOS 6_ box, so it could be possible that the above lines already exist on that file.
-But, if you’re using the _Vagrant lab_, _iptables_ is not enabled or configured by default, the lines are needed.
+Using the _Vagrant lab_, _iptables_ is not enabled or configured by default, so the above lines are needed.
 
 Copy `/etc/sysconfig/iptables` from _onmssrv01_ to _onmssrv02_, _pgdbsrv01_ and _pgdbsrv02_.
 Then restart the _iptables_ service on all the machines.
@@ -767,16 +770,16 @@ success
 
 ==== Syslogd in OpenNMS
 
-In case you’re interested on using _Syslog_ to receive _syslog_ messages and convert them into events, you should open the port you’re going to use for this purpose.
+To use _Syslogd_ in OpenNMS for creating events from received _syslog_ messages, an additional port needs to be opened.
 By default the port is 10514, but it could be different.
-This port is configured on `/opt/opennms/etc/syslogd-configuration.xml`.
+This port is configured in `/opt/opennms/etc/syslogd-configuration.xml`.
 
 If the port is changed, then the firewall rules for _OpenNMS_ must be updated at `/etc/firewalld/services/opennms.xml`.
 
 If the standard _syslog_ server on the _OpenNMS_ servers will be used as a gateway to receive _syslog_ messages from all other servers and then forward them to _OpenNMS_, the port UDP 514 must be opened.
 You can either create a firewall _XML_ file for _syslog_, or add the port to `opennms.xml`.
 
-If the `opennms.xml` is updated (or another firewall rule _XML_ file is created), you should reload the firewall configuration:
+If `opennms.xml` is updated, or another firewall rule _XML_ file is created, the firewall configuration needs to be reloaded:
 
 [source, bash]
 ----
@@ -788,7 +791,7 @@ success
 
 It is important to allow communication between _OpenNMS_ and the nodes that are going to be monitored through the appropriate protocols.
 Typical applications to open are _ICMP_, _SNMP_ (UDP 161) and _SNMP-Traps_ (UDP 162).
-For other kind of monitor requirements, you might need to open other ports like _HTTP_ (TCP 80).
+For other kind of monitor requirements, ports such as _HTTP_ (TCP 80), will need to be accessible.
 
 In order to access _OpenNMS_, the _WebUI_ port must be opened.
 By default it is 8980, but it can be changed.
@@ -802,4 +805,4 @@ This is done through the port TCP 5417.
 _Corosync_ which is the common cluster service used on any version of _RHEL/CentOS_ requires that multicast communication is open across all the cluster members.
 This is already covered by the firewall rules, but in case of a real environment, make sure that the IP rules on switches (or Virtual Networks, in case of _VMWare vCloud_) allows multicast; otherwise, the cluster won’t work.
 
-Also, it is extremely important to reduce as much as possible the network devices between the cluster members, to reduce potential failure points.
+It is extremely important to minimize network infrastructure between cluster members to reduce potential failure points.
