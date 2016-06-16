@@ -223,7 +223,7 @@ For this reason, install the following packages on the _pgpoo-II/OpenNMS_ server
 [source, bash]
 ----
 [root@onmssrv01 ~]$ yum install postgresql94 postgresql94-server postgresql94-libs pgpool-II-pg94 rsync -y
- [root@onmssrv02 ~]$ yum install postgresql94 postgresql94-server postgresql94-libs pgpool-II-pg94 rsync -y
+[root@onmssrv02 ~]$ yum install postgresql94 postgresql94-server postgresql94-libs pgpool-II-pg94 rsync -y
 ----
 
 On the database servers, install the packages for PostgreSQL Server and repmgr:
@@ -239,7 +239,7 @@ Verify with the following command:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]$ # grep postgres /etc/passwd
+[root@pgdbsrv01 ~]$ grep postgres /etc/passwd
 postgres:x:26:26:PostgreSQL Server:/var/lib/pgsql:/bin/bash
 ----
 
