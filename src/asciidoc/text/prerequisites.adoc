@@ -42,8 +42,8 @@ Create a directory and inside of it create a file called Vagrantfile, with the f
 include::../files/prerequisites/Vagrantfile[]
 ----
 
-The above file will setup 5 machines using _CentOS 6.6_.
-In order to use _CentOS 7_, replace the value of the `config.vm.box` attribute from `bento/centos-6.6` to `bento/centos-7.1`.
+The above file will setup 5 machines using latest _CentOS 7_.
+In order to use _CentOS 6_, replace the value of the `config.vm.box` attribute from `centos/7` to `centos/6`.
 To use _CentOS 6_ on some machines and _CentOS 7_ on other machines, add a `:box` attribute on the _JSON_ configuration for the systems using a different OS than the default (the default box is `config.vm.box`).
 
 To startup the VMs, execute the following command:
@@ -66,8 +66,7 @@ _Vagrant_ automatically generates a user called `vagrant` with _sudo_ access wit
 
 As almost all the commands used on this tutorial requires _root_ access, either become _root_ (and change the _root_ password on each VM), or use the _vagrant_ user with `sudo` for all the commands.
 
-By default, _SELinux_ is configured as _permissive_ in `/etc/sysconfig/selinux`.
-For full security, it is recommended to change it to be _enforcing_ and restart the VMs, as this is the default option in _RHEL/CentOS 6_ and _7_.
+Make sure that _SELinux_ is configured to be _enforcing_ in `/etc/sysconfig/selinux` for full security, and restart the VMs if required.
 
 To restart all the VMs with Vagrant:
 
@@ -123,55 +122,24 @@ $ vagrant reload
 The standard _RHEL/CentOS_ repositories do not contain the packages for _pgpool-II_ or _repmgr_.
 Additionally, the supported _PostgreSQL_ version for _RHEL/CentOS 6_ is _8.4_, and for _RHEL/CentOS 7_ is _9.2_.
 
-Because this solution required the usage of _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, the  _PGDG_ repository needs to be added.
-
-The _PGDG_ provides packages for _pgpool-II_, but a different repository will be used from additional dependency issues with the _RPM_ provided on the _PGDG_ repository.
+Because this solution required the usage of at least _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, the  _PGDG_ repository needs to be added.
+For this tutorial, we're going to use _PostgreSQL 9.5_ and the provided versions for _repmgr_ and _pgpool-II_ on the _PGDG_ repository for that version of PostgreSQL.
 
 _PGDG_ is a project that maintains _RPM_ builds of _PostgreSQL_ and related components.
 More information and repo-URL’s for _PGDG_ can be found here:
 
 http://yum.postgresql.org/repopackages.php
 
-Information about the _pgpool-II_ _YUM_ repository is provided here:
+Add the _PGDG_ repo on all nodes (as `root`):
 
-http://www.pgpool.net/mediawiki/index.php/Yum_Repository
-
-Add the _PGDG_ repo on all nodes:
-
-[source]
+[source, bash]
 ----
-[root@pgdbsrv01 ~]# yum install http://yum.postgresql.org/9.4/redhat/rhel-6-x86_64/pgdg-centos94-9.4-1.noarch.rpm -y
-[root@pgdbsrv02 ~]# yum install http://yum.postgresql.org/9.4/redhat/rhel-6-x86_64/pgdg-centos94-9.4-1.noarch.rpm -y
-[root@onmssrv01 ~]# yum install http://yum.postgresql.org/9.4/redhat/rhel-6-x86_64/pgdg-centos94-9.4-1.noarch.rpm -y
-[root@onmssrv02 ~]# yum install http://yum.postgresql.org/9.4/redhat/rhel-6-x86_64/pgdg-centos94-9.4-1.noarch.rpm -y
+yum install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-redhat95-9.5-2.noarch.rpm -y
 ----
 
-For _RHEL/CentOS 7_, replace `rhel-6` with `rhel-7`.
+For _RHEL/CentOS 6_, replace `rhel-7` with `rhel-6`.
 
-As previously mentioned, use the following repository for _pgpool-II_.  This repository must be installed only on the _Pgpool-II_ server, which are the _OpenNMS_ servers in this case.
-
-[source]
-----
-[root@onmssrv01 ~]# yum install http://www.pgpool.net/yum/rpms/3.4/redhat/rhel-6-x86_64/pgpool-II-release-3.4-1.noarch.rpm -y 
-[root@onmssrv02 ~]# yum install http://www.pgpool.net/yum/rpms/3.4/redhat/rhel-6-x86_64/pgpool-II-release-3.4-1.noarch.rpm -y
-----
-
-For _RHEL/CentOS 7_, replace `rhel-6` with `rhel-7`.
-
-To avoid version conflicts between the two versions of _pgpool-II_ and _libmemcached_, edit the _PGDG_ repository, `/etc/yum.repos.d/pgdg-94-centos.repo` file.  Exclude _libmemcached_ by adding the following line at the end of the section called `pgdb94`.  This is done on the _OpenNMS_ servers:
-
-[source]
-----
-[pgdg94]
-name=PostgreSQL 9.4 $releasever - $basearch
-baseurl=http://yum.postgresql.org/9.4/redhat/rhel-$releasever-$basearch
-enabled=1
-gpgcheck=1
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-PGDG-94
-exclude=libmemcached*
-----
-
-Forgetting this step will result in errors when executing `yum update`.
+IMPORTANT: Make sure to install the above package on all the servers: `onmssrv01`, `onmssrv02`, `pgdbsrv01` and `pgdbsrv02`.
 
 === OpenNMS Repository
 
@@ -184,15 +152,16 @@ Find the appropriate release _RPM_ from link:http://yum.opennms.org/[yum.opennms
 
 Then install that repo package (as `root`):
 
-[source]
+[source, bash]
 ----
-[root@onmssrv01 ~]# yum install http://yum.opennms.org/repofiles/opennms-repo-stable-rhel6.noarch.rpm -y
-[root@onmssrv01 ~]# yum install http://yum.opennms.org/repofiles/opennms-repo-stable-rhel6.noarch.rpm -y
+yum install http://yum.opennms.org/repofiles/opennms-repo-stable-rhel7.noarch.rpm -y
 ----
 
-For _CentOS/RHEL 7_, replace `rhel6` with `rhel7`.
+For _RHEL/CentOS 6_, replace `rhel-7` with `rhel-6`.
 
-This solution has been tested with _OpenNMS Horizon 14_, _15_ and _16_.
+This solution has been tested with _OpenNMS Horizon 14_, and newer.
+
+IMPORTANT: Make sure to install the above package on `onmssrv01` and `onmssrv02`.
 
 ==== Meridian
 
@@ -213,25 +182,25 @@ Replace `username` and `password` with the proper credentials.
 
 This solution has been tested with _OpenNMS Meridian 2015.1.0_.
 
+IMPORTANT: Make sure to configure the above repository on `onmssrv01` and `onmssrv02`.
+
 === RPM Packages Installation
 
 ==== Database Packages
 
-The _Pgpool-II_ servers (i.e. the _OpenNMS_ servers) are not going to run _PostgreSQL_, but it is recommended to install the `postgresql` packages on these servers.
-For this reason, install the following packages on the _pgpoo-II/OpenNMS_ servers:
+The _pgpool-II_ servers (i.e. the _OpenNMS_ servers) are not going to run _PostgreSQL_, but it is recommended to install the `postgresql` packages on these servers.
+For this reason, install the following packages on each of the _pgpoo-II/OpenNMS_ servers:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ yum install postgresql94 postgresql94-server postgresql94-libs pgpool-II-pg94 rsync -y
-[root@onmssrv02 ~]$ yum install postgresql94 postgresql94-server postgresql94-libs pgpool-II-pg94 rsync -y
+yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
 ----
 
-On the database servers, install the packages for PostgreSQL Server and repmgr:
+On each the database servers, install the packages for _PostgreSQL Server_ and _repmgr_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]$ yum install postgresql94 postgresql94-server postgresql94-contrib repmgr94 rsync -y
-[root@pgdbsrv02 ~]$ yum install postgresql94 postgresql94-server postgresql94-contrib repmgr94 rsync -y
+yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
 ----
 
 At this point, the `postgres` user must exist on all the 4 machines.
@@ -243,42 +212,85 @@ Verify with the following command:
 postgres:x:26:26:PostgreSQL Server:/var/lib/pgsql:/bin/bash
 ----
 
-The user will be created automatically as part of the installation of the `postgresql94-server` package.
+The user will be created automatically as part of the installation of the `postgresql95-server` package.
 
-IMPORTANT: Do not make _Pgpool-II_ to start with the operating system, because it will be managed by the cluster services.
+IMPORTANT: Do not make _pgpool-II_ to start with the operating system, because it will be managed by the cluster services.
+
+IMPORTANT: Repeat all the above commands on `onmssrv02`
 
 ==== OpenNMS Packages
 
-Starting with _OpenNMS Horizon 16_, _OpenNMS_ requires _Oracle JDK 8_.
-For _Meridian_ and older versions of _Horizon_, _Oracle JDK 7_ is required.
+Starting with _OpenNMS Horizon 16_ and _OpenNMS Meridian 2016_, _OpenNMS_ requires _Oracle JDK 8_.
+For _Meridian 2015_ and older versions of _Horizon_, _Oracle JDK 7_ is required.
 The appropriate _JDK_ will be installed with _OpenNMS_, as they are provided through the _OpenNMS YUM_ repositories.
+Keep in mind that the provided Oracle JDK might not be the latest version, so it is recommended to install it directly from Oracle's web site.
+
+Download and Install Oracle JDK 8:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
+[root@onmssrv01 ~]# yum install -y /tmp/jdk-8u91-linux-x64.rpm
+----
+
+Make sure to use the appropriate version for the Oracle JDK you're planning to use from http://java.oracle.com.
 
 For Horizon:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# yum install opennms-core opennms-webapp-jetty -y
-[root@onmssrv01 ~]# yum install 'perl(LWP)' 'perl(XML::Twig)' -y
-[root@onmssrv02 ~]# yum install opennms-core opennms-webapp-jetty -y
-[root@onmssrv02 ~]# yum install 'perl(LWP)' 'perl(XML::Twig)' -y
+[root@onmssrv01 ~]# yum install opennms-core opennms-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
-
-To use _RRDtool_ with _Horizon_ and _RHEL/CentOS 6_, it is recommended to download the `rrdtool` and `rrdtool-perl` packages (version 1.4.7) from http://packages.express.org/rrdtool/, instead of using the packages from the distribution.
-For _RHEL/CentOS 7_, use the `rrdtool` packages available for the distribution.
 
 For Meridian:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# yum install meridian-core meridian-webapp-jetty -y
-[root@onmssrv01 ~]# yum install 'perl(LWP)' 'perl(XML::Twig)' -y
-[root@onmssrv02 ~]# yum install meridian-core meridian-webapp-jetty -y
-[root@onmssrv02 ~]# yum install 'perl(LWP)' 'perl(XML::Twig)' -y
+[root@onmssrv01 ~]# yum install meridian-core meridian-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
 
 _Meridian_ provides _RRDtool_ and it is enabled by default.
 
+To use _RRDtool_ with _Horizon_, the _OpenNMS_ repository provides the packages as well as the libraries required to use it.
+
+For `Horizon 16` or older:
+[source, bash]
+----
+[root@onmssrv01 ~]# yum install jrrd rrdtool -y
+----
+
+For `Horizon 17` or newer:
+[source, bash]
+----
+[root@onmssrv01 ~]# yum install jrrd2 rrdtool -y
+----
+
+It is recommended to install the `haveged` package on all the _OpenNMS_ servers. This service reduces the startup time of the _OpenNMS_ application.
+This package belongs to the EPEL Repository (https://fedoraproject.org/wiki/EPEL).
+
+Install and enable the EPEL Repository on RHEL/CentOS 6:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm -y
+[root@onmssrv01 ~]# yum install haveged -y
+[root@onmssrv01 ~]# chkconfig haveged on
+[root@onmssrv01 ~]# service haveged start
+----
+
+Install and enable the EPEL Repository on RHEL/CentOS 7:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+[root@onmssrv01 ~]# yum install haveged -y
+[root@onmssrv01 ~]# systemctl enable haveged
+[root@onmssrv01 ~]# systemctl start haveged
+----
+
 IMPORTANT: Do not make _OpenNMS_ to start with the operating system.  Instead it will be managed by the cluster services.
+
+IMPORTANT: Repeat all the above commands on `onmssrv02`
 
 ==== RedHat Cluster Packages
 
@@ -324,10 +336,7 @@ It is always recommended to keep the OS up to date, so at this point it is a goo
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# yum update -y
-[root@onmssrv02 ~]# yum update -y
-[root@pgdbsrv01 ~]# yum update -y
-[root@pgdbsrv02 ~]# yum update -y
+yum update -y
 ----
 
 After updating all packages, it is recommended to reboot all machines.
@@ -340,11 +349,11 @@ $ vagrant reload
 
 === Customization of Initialization Scripts
 
-_Pgpool_ and _OpenNMS_ expects that _PostgreSQL_ is up and running, and all the connections are available prior starting the services.
+_Pgpool_ and _OpenNMS_ expect that _PostgreSQL_ is up and running, and all the connections are available prior starting the services.
 
 To avoid potential problems with the _OpenNMS_ cluster when a machine dies, the following steps are necessary.
 
-On each _OpenNMS_ server, create a script called `dbcleanup` at `/usr/local/bin/` with the following content:
+On each _OpenNMS_ server, create a script called `dbcleanup.sh` at `/usr/local/bin/` with the following content:
 
 [source, bash]
 ----
@@ -357,10 +366,9 @@ WARNING: Update the variables according to your environment.
 [source, bash]
 ----
 [root@onmssrv01 ~]# chmod 0700 /usr/local/bin/dbcleanup.sh
-[root@onmssrv02 ~]# chmod 0700 /usr/local/bin/dbcleanup.sh
 ----
 
-On each _PostgreSQL_ server, create a script called `cleanup.sh` at `/var/lib/psql/9.4/` with the following content:
+On each _PostgreSQL_ server, create a script called `cleanup.sh` at `/var/lib/psql/9.5/` with the following content:
 
 [source, bash]
 ----
@@ -371,12 +379,11 @@ Make sure up update the ownership and the permissions on the file:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# chmod 0700 /var/lib/pgsql/9.4/cleanup.sh
-[root@pgdbsrv01 ~]# chown postgres:postgres /var/lib/pgsql/9.4/cleanup.sh
-
-[root@pgdbsrv02 ~]# chmod 0700 /var/lib/pgsql/9.4/cleanup.sh
-[root@pgdbsrv02 ~]# chown postgres:postgres /var/lib/pgsql/9.4/cleanup.sh
+[root@pgdbsrv01 ~]# chmod 0700 /var/lib/pgsql/9.5/cleanup.sh
+[root@pgdbsrv01 ~]# chown postgres:postgres /var/lib/pgsql/9.5/cleanup.sh
 ----
+
+IMPORTANT: Do not forget to update `onmssrv02` and `pgdbsrv02`.
 
 It is important to tune the initialization scripts properly.
 
@@ -390,33 +397,43 @@ Here is how the content should look like:
 include::../files/prerequisites/pgpool[]
 ----
 
+IMPORTANT: Remember to perform the above tasks on _onmssrv01_ and _onmssrv02_.
+
 WARNING: Be careful when upgrading the installed packages! The files modified above may be overridden and will require updating again.
 
 ==== Systemd Initialization Scripts (RHEL/CentOS 7)
 
 The _systemd_ initialization script for _pgpool-II_ is not correct and it must be fixed prior start using _pgpool_.
-Edit the `/lib/systemd/system/pgpool.service` file and make sure the content looks like the following:
+Edit the `/lib/systemd/system/pgpool-II-95.service` file and make sure the content looks like the following:
 
 [source]
 ----
-include::../files/prerequisites/pgpool.service[]
+include::../files/prerequisites/pgpool-II-95.service[]
 ----
 
-Edit `/usr/lib/tmpfiles.d/pgpool-II-pg94.conf` and make sure the contents look like the following:
+Make sure the permissions on the file are correct:
+
+[source, bash]
+----
+chmod 06444 /lib/systemd/system/pgpool-II-95.service
+----
+
+
+Edit `/usr/lib/tmpfiles.d/pgpool-II-95.conf` and make sure the content look like the following:
 
 ----
-include::../files/prerequisites/pgpool-II-pg94.conf[]
+include::../files/prerequisites/pgpool-II-95.conf[]
 ----
 
 To avoid reboot the system, fix the ownership of the directory:
 
-[source]
+[source, bash]
 ----
-[root@onmssrv01 ~]# chown postgres:postgres /var/run/pgpool
+chown postgres:postgres /var/run/pgpool-II-95
 ----
 
 It is important to update the default options used by `pgpool` when it initializes.
-These options are defined on `/etc/sysconfig/pgpool`.
+These options are defined on `/etc/sysconfig/pgpool-II-95`.
 Be sure they look like the following:
 
 [source, bash]
@@ -427,7 +444,7 @@ OPTS=" -n --discard-status"
 Similarly, by default the _systemd_ initialization script for _OpenNMS_ will force `START_TIMEOUT=0`.
 In order to avoid potential problems when checking the _OpenNMS_ state, it is better to disable this option.
 
-Edit the `/usr/lib/systemd/system/opennms.service` file, remove the `-Q` from the `ExecStart` method; add `TimeoutStartSec=0` and replace `postgresql` with `pgpool`.
+Edit the `/usr/lib/systemd/system/opennms.service` file, remove the `-Q` from the `ExecStart` method; add `TimeoutStartSec=0` and replace `postgresql.service` with `pgpool-II-95.service`.
 The content should look like this:
 
 [source, bash]
@@ -439,10 +456,10 @@ After updating the files, execute the following command:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# systemctl daemon-reload
+systemctl daemon-reload
 ----
 
-Remember to do the same on _onmssrv02_.
+IMPORTANT: Remember to perform the above tasks on _onmssrv01_ and _onmssrv02_.
 
 WARNING: Be careful when upgrading the installed packages! The files modified above may be overridden and will require updating again.
 
@@ -464,18 +481,16 @@ Enter passphrase (empty for no passphrase):
 Enter same passphrase again:
 Your identification has been saved in /var/lib/pgsql/.ssh/id_rsa.
 Your public key has been saved in /var/lib/pgsql/.ssh/id_rsa.pub.
-The key fingerprint is:
-22:fd:26:d2:0b:a4:30:62:a8:99:37:03:b9:2e:25:89 postgres@pgdbsrv01.local
 ----
 
-Once the _SSH_ keys are aquired, add the generated public keys from all hosts to `/var/lib/pgsql/.ssh/authorized_keys`.
+Once all the _SSH_ keys have been created, add the generated public keys from all the hosts to `/var/lib/pgsql/.ssh/authorized_keys` on each host.
 This will allow all machines to connect to each other and accept each host's key.
 
 To show the public _RSA-key_, use the following command on each server:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]$ cat /var/lib/pgsql/.ssh/id_rsa.pub
+[root@pgdbsrv01 ~]# cat /var/lib/pgsql/.ssh/id_rsa.pub
 ----
 
 Then, create the `authorized_keys` file, and put all the public keys inside (one per line).
@@ -493,7 +508,7 @@ ssh-rsa AAAAB3...== postgres@pgdbsrv02.local
 The actual keys have been omitted for simplification purposes.
 
 Unattended access allows for no password or other validation.
-Because this is desired, add all hosts to the `known_hosts`-file.
+Because this is desired, add all hosts to the `known_hosts` file.
 This prevents the question to add the hosts fingerprint on the first connection.
 Be sure to execute the following command on all the servers:
 
@@ -552,7 +567,7 @@ Connection to pgdbsrv02 closed.
 logout
 ----
 
-Repeat the above set of commands for each host on each server to be sure that _postgres_ user can _SSH_ without passwords.
+IMPORTANT: Repeat the above a similar set of commands from the rest of the servers to be sure that the _postgres_ user can _SSH_ without passwords.
 
 === Internal Firewall
 
@@ -664,7 +679,7 @@ Finally, restart _iptables_ on all the servers:
 
 ==== RHEL/CentOS 7
 
-The first thing to do is enable and start firewalld on all servers:
+The first thing to do is enable and start `firewalld` on all servers:
 
 [source, bash]
 ----
@@ -687,7 +702,7 @@ All firewall changes must be executed against _firewalld_ using `firewall-cmd` a
 
 Repeat the above commands on the rest of the servers: _onmssrv02_, _pgdbsrv01_, _pgdbsrv02_ and _nfssrv01_.
 
-On the _OpenNMS_ servers, create a new file called `/etc/firewalld/services/opennms.xml`, and put the following content inside of it:
+On each of the _OpenNMS_ servers, create a new file called `/etc/firewalld/services/opennms.xml`, and put the following content inside of it:
 
 [source, xml]
 ----
@@ -740,9 +755,9 @@ Then, reload the firewall configuration
 success
 ----
 
-Repeat all the process on the standby _OpenNMS_ server (_onmssrv02_).
+IMPORTANT: Repeat all the process on the standby _OpenNMS_ server (_onmssrv02_).
 
-On the _PostgreSQL_ servers, execute the following commands:
+On each of the _PostgreSQL_ servers, execute the following commands:
 
 [source, bash]
 ----
@@ -754,7 +769,7 @@ success
 success
 ----
 
-Repeat the process on the standby _PostgreSQL_ server (_pgdbsrv02_).
+IMPORTANT: Repeat the process on the standby _PostgreSQL_ server (_pgdbsrv02_).
 
 On the _NFS_ server, execute the following commands:
 

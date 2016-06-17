@@ -10,7 +10,7 @@ start(){
   fi
 
   # Modified by Alejandro Galue <agalue@opennms.org>
-  /usr/local/bin/dbcleanup
+  /usr/local/bin/dbcleanup.sh
 
   $SU -l $PGPOOLUSER -c "$PGPOOLDAEMON -f $PGPOOLCONF $OPTS & " >> "$PGPOOLLOG" 2>&1 < /dev/null
   sleep 2

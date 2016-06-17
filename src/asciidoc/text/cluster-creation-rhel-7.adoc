@@ -195,7 +195,7 @@ The cluster resources we’re going to add are the following:
 The floating IP Address
 * A shared filesystem for `/opt/opennms/etc`
 * A shared filesystem for `/var/opennms`
-* A shared filesystem for `/etc/pgpool-II`
+* A shared filesystem for `/etc/pgpool-II-95`
 * The init script for _pgpool-II_
 * The init script for _OpenNMS_
 
@@ -235,7 +235,7 @@ op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 
 [root@onmssrv01 ~]# pcs resource create pgpool_etc ocf:heartbeat:Filesystem \
-device="nfssrv01:/opt/opennms/pgpool" directory="/etc/pgpool-II" fstype="nfs" \
+device="nfssrv01:/opt/opennms/pgpool" directory="/etc/pgpool-II-95" fstype="nfs" \
 op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 ----
@@ -357,7 +357,7 @@ Resources:
                stop interval=0s timeout=60 (onms_var-stop-timeout-60)
                monitor interval=30s on-fail=standby (onms_var-monitor-interval-30s)
   Resource: pgpool_etc (class=ocf provider=heartbeat type=Filesystem)
-   Attributes: device=nfssrv01:/opt/opennms/pgpool directory=/etc/pgpool-II fstype=nfs
+   Attributes: device=nfssrv01:/opt/opennms/pgpool directory=/etc/pgpool-II-95 fstype=nfs
    Meta Attrs: target-role=Started migration-threshold=1
    Operations: start interval=0s timeout=60 (pgpool_etc-start-timeout-60)
                stop interval=0s timeout=60 (pgpool_etc-stop-timeout-60)

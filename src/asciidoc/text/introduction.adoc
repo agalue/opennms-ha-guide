@@ -24,17 +24,17 @@ The need for a redundant, highly-available database is important.
 When using _PostgreSQL_, streaming replication can be setup to provide data redundancy on two or more nodes.
 
 _PostgreSQL_ database redundancy is achieved by using built-in streaming replication.
-Another tool, `Repmgr`, will be used for easier control of the replication between redundant _PostgreSQL_ instances.
+Another tool, _repmgr_, will be used for easier control of the replication between redundant _PostgreSQL_ instances.
 The tool doesn’t replicate data itself but it allows easy control of the replication and the standby-server(s).
 _Repmgr_ also monitors the status of the entire replication process.
 
-To use data from both database copies, _PGpool-II_ will be used.
-_PGpool-II_ can pool connections to nodes.
+To use data from both database copies, _pgpool-II_ will be used.
+_pgpool-II_ can pool connections to nodes.
 It will monitor node status and trigger failover via _repmgr_ if needed.
-_PGpool-II_ has the capability to load-balance traffic based upon the type of SQL query.
+_pgpool-II_ has the capability to load-balance traffic based upon the type of SQL query.
 For example, a _SELECT query_ can be executed upon a read-only slave node and save resources on the read-write master node.
 
-From the client perspective, the database will be seen on only one server- the node running _PGpool-II_.
+From the client perspective, the database will be seen on only one server- the node running _pgpool-II_.
 The failover, standby recovery, etc., nodes will be hidden from the _OpenNMS_ server clients.
 
 **Links:**

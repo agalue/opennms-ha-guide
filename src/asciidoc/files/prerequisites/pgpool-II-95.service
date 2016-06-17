@@ -1,0 +1,15 @@
+[Unit]
+Description=PGPool-II Middleware Between PostgreSQL Servers And PostgreSQL Database Clients
+After=syslog.target network.target
+
+[Service]
+User=postgres
+Group=postgres
+PermissionsStartOnly=true
+EnvironmentFile=-/etc/sysconfig/pgpool-II-95
+ExecStartPre=/usr/local/bin/dbcleanup.sh
+ExecStart=/usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf $OPTS
+ExecStop=/usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf -m fast stop
+
+[Install]
+WantedBy=multi-user.target

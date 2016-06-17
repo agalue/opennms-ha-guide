@@ -36,7 +36,7 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# service postgresql-9.4 initdb
+[root@pgdbsrv01 ~]# service postgresql-9.5 initdb
 Initializing database:                                     [  OK  ]
 ----
 
@@ -44,20 +44,20 @@ On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# /usr/pgsql-9.4/bin/postgresql94-setup initdb
+[root@pgdbsrv01 ~]# /usr/pgsql-9.5/bin/postgresql95-setup initdb
 Initializing database ... OK
 ----
 
-Configure database access by editing `/var/lib/pgsql/9.4/data/pg_hba.conf`:
+Configure database access by editing `/var/lib/pgsql/9.5/data/pg_hba.conf`, and adding the following content:
 
 [source]
 ----
 include::../files/postgresql-cluster/pg_hba.conf[]
 ----
 
-As you can see, md5 has been added to all combinations of user/database/server, to ensure that a password will be required to connect to any database.
+As you can see, _md5_ has been added to all combinations of user/database/server, to ensure that a password will be required to connect to any database.
 
-Configure _PostgreSQL_ itself and streaming replication by editing `/var/lib/pgsql/9.4/data/postgresql.conf`, and updating the following attributes:
+Configure _PostgreSQL_ itself and streaming replication by editing `/var/lib/pgsql/9.5/data/postgresql.conf`, and updating the following attributes:
 
 [source]
 ----
@@ -90,9 +90,9 @@ IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `max_replication_slots` cannot be used
            In case it is required to use an older version, you should replace `max_replication_slots` with: +
            `wal_keep_segments = 5000`
 
-The reason of using _9.4_ with replication slots is precisely because the above setting must be big in 9.3 (or older) to avoid issues with replication, but that forces to have a huge filesystem for /var/lib/pgsql. Either way, with replication slots, a standby server must not be down for a long time, otherwise, this might eat all the disk space allocated for `/var/lib/psql`.
+The reason of using at least _9.4_ with replication slots is precisely because the above setting must be big in 9.3 (or older) to avoid issues with replication, but that forces to have a huge filesystem for /var/lib/pgsql. Either way, with replication slots, a standby server must not be down for a long time, otherwise, this might eat all the disk space allocated for `/var/lib/psql`.
 
-By default, the configuration directory for _repmgr_ is located at `/etc/repmgr/9.4/`.
+By default, the configuration directory for _repmgr_ is located at `/etc/repmgr/9.5/`.
 It is recommended to make a copy of `repmgr.conf` (for documentation purposes), and replace the content of it with the following:
 
 [source]
@@ -106,7 +106,7 @@ Don’t forget to set the owner of the configuration file to _postgres_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]$ chown postgres:postgres /etc/repmgr/9.4/repmgr.conf
+[root@pgdbsrv01 ~]$ chown postgres:postgres /etc/repmgr/9.5/repmgr.conf
 ----
 
 Enable and Start _PostgreSQL_ on the master:
@@ -115,18 +115,18 @@ On _CentOS/RHEL 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# chkconfig postgresql-9.4 on
-[root@pgdbsrv01 ~]# service postgresql-9.4 start
-Starting postgresql-9.4 service:                           [  OK  ]
+[root@pgdbsrv01 ~]# chkconfig postgresql-9.5 on
+[root@pgdbsrv01 ~]# service postgresql-9.5 start
+Starting postgresql-9.5 service:                           [  OK  ]
 ----
 
 On _CentOS/RHEL 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# systemctl enable postgresql-9.4
-ln -s '/usr/lib/systemd/system/postgresql-9.4.service' '/etc/systemd/system/multi-user.target.wants/postgresql-9.4.service'
-[root@pgdbsrv01 ~]# systemctl start postgresql-9.4
+[root@pgdbsrv01 ~]# systemctl enable postgresql-9.5
+ln -s '/usr/lib/systemd/system/postgresql-9.5.service' '/etc/systemd/system/multi-user.target.wants/postgresql-9.5.service'
+[root@pgdbsrv01 ~]# systemctl start postgresql-9.5
 ----
 
 Create the required users for replication, _repmgr_, _pgpool-II_, _opennms_, and the _repmgr_ database:
@@ -135,7 +135,7 @@ Create the required users for replication, _repmgr_, _pgpool-II_, _opennms_, and
 ----
 [root@pgdbsrv01 ~]$ sudo su - postgres
 -bash-4.2$ psql
-psql (9.4.4)
+psql (9.5.3)
 Type "help" for help.
 
 postgres=# CREATE ROLE pgpool SUPERUSER CREATEDB CREATEROLE INHERIT REPLICATION LOGIN ENCRYPTED PASSWORD 'pgpool';
@@ -153,7 +153,7 @@ postgres=# \q
 logout
 ----
 
-Remember to set appropriate passwords (the word between single quotes after the keyword PASSWORD).
+Remember to set appropriate passwords (the word between single quotes after the keyword `PASSWORD`).
 For testing purposes, I’ve used the name of the user for its password to simplify the explanation and configuration examples.
 
 The user _postgres_ will be used for replication (as shown in the `pg_hba.conf` file), and for creating the _OpenNMS_ database, so it requires a password.
@@ -169,7 +169,8 @@ Because _md5_ has been configured on `pg_hba.conf`, it is important to create a 
 -bash-4.2$ echo "*:*:replication:postgres:postgres" >> ~/.pgpass
 -bash-4.2$ chmod 600 ~/.pgpass
 -bash-4.2$ cat ~/.pgpass
-*:*:repmgr:repmgr:repmgr
+*:*:*:repmgr:repmgr
+*:*:replication:postgres:postgres
 -bash-4.1$ exit
 logout
 [root@pgdbsrv01 ~]$ restorecon -R /var/lib/pgsql/
@@ -183,19 +184,21 @@ IMPORTANT: If you forgot to execute the `restorecon` command and _SELinux_ is en
 
 Refer to the following link for more details about `.pgpass` files:
 
-http://www.postgresql.org/docs/9.4/static/libpq-pgpass.html
+http://www.postgresql.org/docs/9.5/static/libpq-pgpass.html
 
 The last step is to register _pgdbsrv01_ as master node for _repmgr_:
 
 [source, bash]
 ----
 [root@pgdbsrv01 ~]$ sudo su - postgres
--bash-4.1$ /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf --verbose master register
-[2015-07-13 10:13:09] [NOTICE] opening configuration file: /etc/repmgr/9.4/repmgr.conf
-[2015-07-13 10:13:09] [INFO] connecting to master database
-[2015-07-13 10:13:09] [INFO] connected to master, checking its state
-[2015-07-13 10:13:09] [INFO] master register: creating database objects inside the repmgr_opennms_cluster schema
-[2015-07-13 10:13:09] [NOTICE] master node correctly registered for cluster opennms_cluster with id 1 (conninfo: host=pgdbsrv01 user=repmgr dbname=repmgr)
+-bash-4.1$ /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose master register
+[2016-06-17 12:42:11] [NOTICE] using configuration file "/etc/repmgr/9.5/repmgr.conf"
+[2016-06-17 12:42:11] [INFO] connecting to master database
+[2016-06-17 12:42:11] [INFO] connected to master, checking its state
+[2016-06-17 12:42:11] [INFO] master register: creating database objects inside the repmgr_opennms_cluster schema
+[2016-06-17 12:42:11] [INFO] retrieving node list for cluster 'opennms_cluster'
+[2016-06-17 12:42:11] [WARNING] get_master_node_id(): no active primary found
+[2016-06-17 12:42:11] [NOTICE] master node correctly registered for cluster opennms_cluster with id 1 (conninfo: host=pgdbsrv01 user=repmgr dbname=repmgr)
 ----
 
 If the `.pgpass` or the _DNS_ is not well configured, the above command could fail or request a password for the _repmgr_ user.
@@ -217,7 +220,7 @@ logout
 [root@pgdbsrv02 ~]$ restorecon -R /var/lib/pgsql/
 ----
 
-Configure _repmgr_ similar to the primary by creating `/etc/repmgr/9.4/repmgr.conf` with the following content:
+Configure _repmgr_ similar to the primary by creating `/etc/repmgr/9.5/repmgr.conf` with the following content:
 
 [source]
 ----
@@ -225,16 +228,16 @@ cluster=opennms_cluster
 node=2
 node_name=pgdbsrv02
 conninfo='host=pgdbsrv02 user=repmgr dbname=repmgr'
-use_replication_slots=1
+use_replication_slots=1 # Only for PostgreSQL 9.4 or newer
 loglevel=INFO
-pg_bindir=/usr/pgsql-9.4/bin/
+pg_bindir=/usr/pgsql-9.5/bin/
 pg_basebackup_options='--xlog-method=stream'
 master_response_timeout=30
 reconnect_attempts=3
 reconnect_interval=10
 failover=manual
-promote_command='/usr/pgsql-9.4/bin/repmgr standby promote -f /etc/repmgr/9.4/repmgr.conf'
-follow_command='/usr/pgsql-9.4/bin/repmgr standby follow -f /etc/repmgr/9.4/repmgr.conf'
+promote_command='/usr/pgsql-9.5/bin/repmgr standby promote -f /etc/repmgr/9.5/repmgr.conf'
+follow_command='/usr/pgsql-9.5/bin/repmgr standby follow -f /etc/repmgr/9.5/repmgr.conf'
 ----
 
 IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `use_replication_slots` must be `0` (i.e. not enabled).
@@ -246,7 +249,7 @@ Don’t forget to set the owner of the configuration file to _postgres_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]$ chown postgres:postgres /etc/repmgr/9.4/repmgr.conf
+[root@pgdbsrv02 ~]$ chown postgres:postgres /etc/repmgr/9.5/repmgr.conf
 ----
 
 Sync the configuration and contents of the primary with the standby:
@@ -254,42 +257,44 @@ Sync the configuration and contents of the primary with the standby:
 [source, bash]
 ----
 [root@pgdbsrv02 ~]$ sudo su - postgres
--bash-4.1$ /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf --verbose -D /var/lib/pgsql/9.4/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv01
-[2015-07-13 10:46:54] [NOTICE] opening configuration file: /etc/repmgr/9.4/repmgr.conf
-[2015-07-13 10:46:54] [NOTICE] destination directory '/var/lib/pgsql/9.4/data' provided
-[2015-07-13 10:46:54] [INFO] connecting to upstream node
-[2015-07-13 10:46:54] [INFO] connected to upstream node, checking its state
-[2015-07-13 10:46:54] [INFO] Successfully connected to upstream node. Current installation size is 26 MB
-[2015-07-13 10:46:54] [NOTICE] starting backup...
-[2015-07-13 10:46:54] [INFO] checking and correcting permissions on existing directory /var/lib/pgsql/9.4/data ...
-[2015-07-13 10:46:54] [INFO] executing: '/usr/pgsql-9.4/bin/pg_basebackup -l "repmgr base backup"  -h pgdbsrv01 -p 5432 -U repmgr -D /var/lib/pgsql/9.4/data --xlog-method=stream'
-[2015-07-13 10:46:59] [NOTICE] standby clone (using pg_basebackup) complete
-[2015-07-13 10:46:59] [NOTICE] HINT: you can now start your PostgreSQL server
-[2015-07-13 10:46:59] [NOTICE] for example : pg_ctl -D /var/lib/pgsql/9.4/data start
+-bash-4.1$ /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose -D /var/lib/pgsql/9.5/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv01
+2016-06-17 12:47:17] [NOTICE] using configuration file "/etc/repmgr/9.5/repmgr.conf"
+[2016-06-17 12:47:17] [NOTICE] destination directory '/var/lib/pgsql/9.5/data' provided
+[2016-06-17 12:47:17] [INFO] connecting to upstream node
+[2016-06-17 12:47:17] [INFO] connected to upstream node, checking its state
+[2016-06-17 12:47:17] [INFO] Successfully connected to upstream node. Current installation size is 28 MB
+[2016-06-17 12:47:17] [INFO] creating directory "/var/lib/pgsql/9.5/data"...
+[2016-06-17 12:47:17] [NOTICE] starting backup (using pg_basebackup)...
+[2016-06-17 12:47:17] [HINT] this may take some time; consider using the -c/--fast-checkpoint option
+[2016-06-17 12:47:17] [INFO] executing: '/usr/pgsql-9.5/bin/pg_basebackup -l "repmgr base backup"  -D /var/lib/pgsql/9.5/data -h pgdbsrv01 -p 5432 -U repmgr --xlog-method=stream'
+[2016-06-17 12:47:17] [NOTICE] standby clone (using pg_basebackup) complete
+[2016-06-17 12:47:17] [NOTICE] you can now start your PostgreSQL server
+[2016-06-17 12:47:17] [HINT] for example : pg_ctl -D /var/lib/pgsql/9.5/data start
+[2016-06-17 12:47:17] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
 -bash-4.1$ exit
 logout
 ----
 
 IMPORTANT: If the command execution ask for the password configured for the _repmgr_ user, you might forgot to execute the `restorecon` command, to avoid _SELinux_ issues when it is enforcing.
 
-In case you experience problems with the synchronization and you need to repeat this step, first delete the contents of the _PostgreSQL_ datadir (`rm -rf /var/lib/pgsql/9.4/data/*`) and try again.
+In case you experience problems with the synchronization and you need to repeat this step, first delete the contents of the _PostgreSQL_ datadir (`rm -rf /var/lib/pgsql/9.5/data/*`) and try again.
 
 On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# chkconfig postgresql-9.4 on
-[root@pgdbsrv02 ~]# service postgresql-9.4 start
-Starting postgresql-9.4 service:                           [  OK  ]
+[root@pgdbsrv02 ~]# chkconfig postgresql-9.5 on
+[root@pgdbsrv02 ~]# service postgresql-9.5 start
+Starting postgresql-9.5 service:                           [  OK  ]
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# systemctl enable postgresql-9.4
-ln -s '/usr/lib/systemd/system/postgresql-9.4.service' '/etc/systemd/system/multi-user.target.wants/postgresql-9.4.service'
-[root@pgdbsrv02 ~]# systemctl start postgresql-9.4
+[root@pgdbsrv02 ~]# systemctl enable postgresql-9.5
+ln -s '/usr/lib/systemd/system/postgresql-9.5.service' '/etc/systemd/system/multi-user.target.wants/postgresql-9.5.service'
+[root@pgdbsrv02 ~]# systemctl start postgresql-9.5
 ----
 
 As the last step in the standby node setup, register the standby in _repmgr_:
@@ -297,15 +302,15 @@ As the last step in the standby node setup, register the standby in _repmgr_:
 [source, bash]
 ----
 [root@pgdbsrv02 ~]$ su - postgres
--bash-4.1$ /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf --verbose standby register
-[2015-07-13 10:49:24] [NOTICE] opening configuration file: /etc/repmgr/9.4/repmgr.conf
-[2015-07-13 10:49:24] [INFO] connecting to standby database
-[2015-07-13 10:49:24] [INFO] connecting to master database
-[2015-07-13 10:49:24] [INFO] finding node list for cluster 'opennms_cluster'
-[2015-07-13 10:49:24] [INFO] checking role of cluster node '1'
-[2015-07-13 10:49:24] [INFO] registering the standby
-[2015-07-13 10:49:24] [INFO] standby registration complete
-[2015-07-13 10:49:24] [NOTICE] standby node correctly registered for cluster opennms_cluster with id 2 (conninfo: host=pgdbsrv02 user=repmgr dbname=repmgr)
+-bash-4.1$ /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose standby register
+[2016-06-17 12:50:17] [NOTICE] using configuration file "/etc/repmgr/9.5/repmgr.conf"
+[2016-06-17 12:50:17] [INFO] connecting to standby database
+[2016-06-17 12:50:17] [INFO] connecting to master database
+[2016-06-17 12:50:17] [INFO] retrieving node list for cluster 'opennms_cluster'
+[2016-06-17 12:50:17] [INFO] checking role of cluster node '1'
+[2016-06-17 12:50:17] [INFO] registering the standby
+[2016-06-17 12:50:17] [INFO] standby registration complete
+[2016-06-17 12:50:17] [NOTICE] standby node correctly registered for cluster opennms_cluster with id 2 (conninfo: host=pgdbsrv02 user=repmgr dbname=repmgr)
 -bash-4.1$ exit
 logout
 ----
@@ -313,7 +318,7 @@ logout
 === Test Replication
 
 First, let’s check that all the servers are running the proper role.
-The primary/master server should not have a `recovery.con` file, but that should exist on each standby server.
+The primary/master server should not have a `recovery.conf` file, but this file should exist on each standby server.
 This file is automatically generated by _repmgr_ as part of the execution of the `standby clone` command.
 
 Another way to verify which server is the master, execute the following _SQL_ query:
@@ -323,7 +328,7 @@ Another way to verify which server is the master, execute the following _SQL_ qu
 SELECT pg_is_in_recovery();
 ----
 
-If the value is true, you're on a slave (or standby server); if false, you’re on the master/primary server:
+If the value is true, you're on a slave (or standby) server; otherwise, you’re on the master/primary server:
 
 On _pgdbsrv01_:
 
@@ -331,7 +336,7 @@ On _pgdbsrv01_:
 ----
 [root@pgdbsrv01 ~]# su - postgres
 -bash-4.1$ psql
-psql (9.4.4)
+psql (9.5.3)
 Type "help" for help.
 
 postgres=# SELECT pg_is_in_recovery();
@@ -360,7 +365,7 @@ On _pgdbsrv02_:
 ----
 [root@pgdbsrv02 ~]# su - postgres
 -bash-4.1$ psql
-psql (9.4.4)
+psql (9.5.3)
 Type "help" for help.
 
 postgres=# SELECT pg_is_in_recovery();
@@ -374,8 +379,8 @@ postgres=# \q
 
 You can also check the _repmgr_ tables to verify if the nodes have been successfully registered:
 
-[source]
-|---
+[source, bash]
+----
 [root@pgdbsrv01 ~]# su - postgres
 -bash-4.1$ psql -x -U repmgr -h pgdbsrv01 -d repmgr -c "SELECT * FROM repmgr_opennms_cluster.repl_nodes;"
 -[ RECORD 1 ]----+-----------------------------------------
@@ -398,22 +403,23 @@ conninfo         | host=pgdbsrv02 user=repmgr dbname=repmgr
 slot_name        | repmgr_slot_2
 priority         | 100
 active           | t
-|---
+----
 
-NOTE: The above query has been executed against the primary server.
+NOTE: Note that the above query has been executed against the primary server.
 
-It is important to have in mind that the name of the view starts with the word "repmgr", then the underscore character ("_"), and then the name of the cluster (in this case, `opennms_cluster`, as it was defined on `repmgr.conf`); in other words: `repmgr_opennms_cluster`.
+WARNING: It is important to have in mind that the name of the view starts with the word `repmgr`, then the underscore character (`_`), and then the name of the cluster (in this case, `opennms_cluster`, as it was defined on `repmgr.conf`); in other words: `repmgr_opennms_cluster`.
 This is the main reason why you should never use special characters when choosing the name of the cluster.
 
 Another way to have a quick status of the cluster is:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# su - postgres -c "/usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf cluster show"
-[2015-07-13 10:56:35] [INFO] connecting to database
-Role      | Connection String
-* master  | host=pgdbsrv01 user=repmgr dbname=repmgr
-  standby | host=pgdbsrv02 user=repmgr dbname=repmgr
+[root@pgdbsrv01 ~]# su - postgres -c "/usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf cluster show"
+[2016-06-17 12:56:40] [INFO] connecting to database
+Role      | Name      | Upstream  | Connection String
+----------+-----------|-----------|-----------------------------------------
+* master  | pgdbsrv01 |           | host=pgdbsrv01 user=repmgr dbname=repmgr
+  standby | pgdbsrv02 | pgdbsrv01 | host=pgdbsrv02 user=repmgr dbname=repmgr
 ----
 
 The above command can be executed on any _PostgreSQL_ server.
@@ -424,25 +430,25 @@ Finally, you can use the following command on the primary server to see the stat
 ----
 [root@pgdbsrv01 ~]# su - postgres -c "psql -x -c 'select * from pg_stat_replication;'"
 -[ RECORD 1 ]----+------------------------------
-pid              | 3391
+pid              | 25917
 usesysid         | 16385
 usename          | repmgr
 application_name | pgdbsrv02
 client_addr      | 192.168.205.154
 client_hostname  | pgdbsrv02.local
-client_port      | 49663
-backend_start    | 2015-07-13 11:34:19.452167-04
+client_port      | 57035
+backend_start    | 2016-06-17 12:49:46.922831-04
 backend_xmin     |
 state            | streaming
-sent_location    | 0/C001B78
-write_location   | 0/C001B78
-flush_location   | 0/C001B78
-replay_location  | 0/C001B78
+sent_location    | 0/3000670
+write_location   | 0/3000670
+flush_location   | 0/3000670
+replay_location  | 0/3000670
 sync_priority    | 0
 sync_state       | async
 ----
 
-Also you should see that the replication processes are running on the standby server:
+Also, you should be able to see that the replication processes are running on the standby server:
 
 [source, bash]
 ----
@@ -459,19 +465,22 @@ Before we create a sample database on the primary, let’s list the databases fr
 [source, bash]
 ----
 [root@pgdbsrv01 ~]# su - postgres -c "psql -c '\list'"
-                                  List of databases
-   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+List of databases
+Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
 -----------+----------+----------+-------------+-------------+-----------------------
- postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
- repmgr    | repmgr   | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
- template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
-           |          |          |             |             | postgres=CTc/postgres
- template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
-           |          |          |             |             | postgres=CTc/postgres
+postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+repmgr    | repmgr   | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+          |          |          |             |             | postgres=CTc/postgres
+template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+          |          |          |             |             | postgres=CTc/postgres
 (4 rows)
+----
 
 Create the database on the primary:
 
+[source, bash]
+----
 [root@pgdbsrv01 ~]# su - postgres -c "psql -c 'CREATE DATABASE test'"
 CREATE DATABASE
 ----
@@ -481,20 +490,20 @@ Same command as we did before the _DB-create_: list the current databases on the
 [source, bash]
 ----
 [root@pgdbsrv02 ~]# su - postgres -c "psql -c '\list'"
-                                  List of databases
-   Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
+List of databases
+Name    |  Owner   | Encoding |   Collate   |    Ctype    |   Access privileges
 -----------+----------+----------+-------------+-------------+-----------------------
- postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
- repmgr    | repmgr   | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
- template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
-           |          |          |             |             | postgres=CTc/postgres
- template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
-           |          |          |             |             | postgres=CTc/postgres
- test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+repmgr    | repmgr   | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
+template0 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+          |          |          |             |             | postgres=CTc/postgres
+template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 | =c/postgres          +
+          |          |          |             |             | postgres=CTc/postgres
+test      | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |
 (5 rows)
 ----
 
-As you can see, the new database, test, got replicated to the standby.
+As you can see, the new database (i.e. `test`), got replicated to the standby.
 
 Another test which you could do, is to check if the standby is read-only:
 
@@ -516,7 +525,7 @@ DROP DATABASE
 
 If you check the standby server again, you should see that the test _DB_: is not there, as expected.
 
-=== Setup Pgpool-II
+=== Setup PGPool-II
 
 The next chapter is to setup _pgpool-II_ in order to distribute queries to the primary and standby, and to make sure that we failover to the standby in case the primary isn’t available anymore.
 
@@ -524,11 +533,13 @@ Configure _pgpool-II_ by copying the sample configuration file:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ cd /etc/pgpool-II/
-[root@onmssrv01 pgpool-II]$ cp pgpool.conf.sample-stream pgpool.conf
+[root@onmssrv01 ~]# cd /etc/pgpool-II-95/
+[root@onmssrv01 pgpool-II-95]# cp pgpool.conf.sample-stream pgpool.conf
 ----
 
-Edit the following settings in the copied sample file `/etc/pgpool-II/pgpool.conf`, do not replace the contents of the file but edit everything listed under here:
+Edit the following settings in the copied sample file `/etc/pgpool-II-95/pgpool.conf`:
+
+WARNING: do not replace the contents of the file but edit everything listed under here.
 
 [source, bash]
 ----
@@ -537,12 +548,12 @@ port = 9999
 backend_hostname0 = 'pgdbsrv01'
 backend_port0 = 5432
 backend_weight0 = 1
-backend_data_directory0 = '/var/lib/pgsql/9.4/data'
+backend_data_directory0 = '/var/lib/pgsql/9.5/data'
 backend_flag0 = 'ALLOW_TO_FAILOVER'
 backend_hostname1 = 'pgdbsrv02'
 backend_port1 = 5432
 backend_weight1 = 1
-backend_data_directory1 = '/var/lib/pgsql/9.4/data'
+backend_data_directory1 = '/var/lib/pgsql/9.5/data'
 backend_flag1 = 'ALLOW_TO_FAILOVER'
 enable_pool_hba = on
 pool_passwd = 'pool_passwd'
@@ -550,8 +561,8 @@ authentication_timeout = 60
 num_init_children = 60
 max_pool = 1
 child_max_connections = 0
-pid_file_name = '/var/run/pgpool/pgpool.pid'
-logdir = '/var/log/pgpool'
+pid_file_name = '/var/run/pgpool-II-95/pgpool.pid'
+logdir = '/var/log/pgpool-II-95'
 connection_cache = on
 replication_mode = off
 load_balance_mode = on
@@ -562,36 +573,36 @@ sr_check_password = 'pgpool'
 health_check_period = 10
 health_check_user = 'pgpool'
 health_check_password = 'pgpool'
-failover_command = '/etc/pgpool-II/failover.sh %h %H'
+failover_command = '/etc/pgpool-II-95/failover.sh %h %H'
 recovery_user = 'pgpool'
 recovery_password = 'pgpool'
 ----
 
-IMPORTANT: Replace the sample password of the _pgpool_ user accordingly (not required for the _Vagrant lab_).
+WARNING: Replace the sample password of the _pgpool_ user accordingly (not required for the _Vagrant lab_).
 
-IMPORTANT: For _RHEL/CentOS 6_, the `pid_file_name` must be `/var/run/pgpool/pgpool.pid`.
-           For _RHEL/CentOS 7_ this is enforced through `pgpool.service` (the _systemd_ initialization script).
-           That way, the content of `pgpool.conf` is the same for both operating systems.
+WARNING: Be sure that `num_init_children` is consistent with the required number of connections in _OpenNMS_ (/opt/opennms/etc/opennms-datasources.xml), and the configured `max_connections` in `postgresql.conf`.
+
+WARNING: The online recovery feature won’t be used.
+It is recommended that the server administrator manually execute the recovery procedure on the broken _DB_ server, to convert it into a new slave server.
+
+IMPORTANT: For _RHEL/CentOS 6_, the `pid_file_name` must be `/var/run/pgpool-II-95/pgpool.pid`.
+           For _RHEL/CentOS 7_ this is enforced through `pgpool-II-95.service` (the _systemd_ initialization script).
+           That way, the content of `pgpool-II-95.conf` is the same for both operating systems.
 
 Having the password on a configuration file is not optimal, but unfortunately, this is something that is still required for the _pgpool-II_ version installed on the systems (which is the latest one by the time this document was written).
-
-Also, be sure that `num_init_children` is consistent with the required number of connections in _OpenNMS_, and the configured `max_connections` in `postgresql.conf`.
 
 To reduce possible security holes, change the permissions of the file to be `0600`, and make the user _postgres_ to own the file:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ chmod 0600 /etc/pgpool-II/pgpool.conf
-[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II/pgpool.conf
+[root@onmssrv01 ~]$ chmod 0600 /etc/pgpool-II-95/pgpool.conf
+[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II-95/pgpool.conf
 ----
 
 The selected port is the default (i.e. 9999).
 It is possible to change it to _PostgreSQL’s_ default (i.e. 5432), but I’ve chosen 9999 to remember that we’re connecting to _pgpool-II_ and not directly to the _PostgreSQL_ servers.
 
-The online recovery feature won’t be used.
-It is recommended that the server administrator manually execute the recovery procedure on the broken _DB_ server, to convert it into a new slave server.
-
-On the above settings, we specified that on failover, the script `failover.sh` should be executed, so we’ll need to create this file in `/etc/pgpool-II/failover.sh`:
+On the above settings, we specified that on failover, the script `failover.sh` should be executed, so we’ll need to create this file in `/etc/pgpool-II-95/failover.sh`:
 
 [source, bash]
 ----
@@ -602,11 +613,11 @@ Remember to fix the permissions on the failover script:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ chmod 0700 /etc/pgpool-II/failover.sh
-[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II/failover.sh
+[root@onmssrv01 ~]$ chmod 0700 /etc/pgpool-II-95/failover.sh
+[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II-95/failover.sh
 ----
 
-We also specified in the configuration that we want to use `pool_hba.conf`, so we need to add the credentials to the `/etc/pgpool-II/pool_hba.conf` file.
+We also specified in the configuration that we want to use `pool_hba.conf`, so we need to add the credentials to the `/etc/pgpool-II-95/pool_hba.conf` file.
 
 Due to a known problem in _pgpool-II_, it is not possible to mix authentication methods on `pool_hba.conf`.
 For this reason, and because _md5_ has been configured on all the _PostgreSQL_ servers, the content of the `pool_hba.conf` file must be:
@@ -625,8 +636,8 @@ Remember to fix the permissions on the failover script:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ chmod 0600 /etc/pgpool-II/pool_hba.conf
-[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II/pool_hba.conf
+[root@onmssrv01 ~]$ chmod 0600 /etc/pgpool-II-95/pool_hba.conf
+[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II-95/pool_hba.conf
 ----
 
 Every user that needs to connect via _pgpool-II_ needs to be added in `pool_passwd`.
@@ -634,12 +645,12 @@ First we need to create this file and let it be owned by _postgres_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# touch /etc/pgpool-II/pool_passwd
-[root@onmssrv01 ~]# chmod 600 /etc/pgpool-II/pool_passwd
-[root@onmssrv01 ~]# chown postgres:postgres /etc/pgpool-II/pool_passwd
+[root@onmssrv01 ~]# touch /etc/pgpool-II-95/pool_passwd
+[root@onmssrv01 ~]# chmod 600 /etc/pgpool-II-95/pool_passwd
+[root@onmssrv01 ~]# chown postgres:postgres /etc/pgpool-II-95/pool_passwd
 ----
 
-Next, we can add users to the file.
+Now, we can add users to the file.
 Let’s do that for the _pgpool_ user which we created earlier:
 
 [source, bash]
@@ -678,18 +689,18 @@ Now, add the user with the above password to `pcp.conf`:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# echo "postgres:e8a48653851e28c69d0506508fb27fc5" >> /etc/pgpool-II/pcp.conf
+[root@onmssrv01 ~]# echo "postgres:e8a48653851e28c69d0506508fb27fc5" >> /etc/pgpool-II-95/pcp.conf
 ----
 
 Remember to fix the permissions on the failover script:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ chmod 0600 /etc/pgpool-II/pcp.conf
-[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II/pcp.conf
+[root@onmssrv01 ~]$ chmod 0600 /etc/pgpool-II-95/pcp.conf
+[root@onmssrv01 ~]$ chown postgres:postgres /etc/pgpool-II-95/pcp.conf
 ----
 
-At the end, you should have something like the following at `/etc/pgpool-II/`:
+At the end, you should have something like the following at `/etc/pgpool-II-95/`:
 
 ----
  -rwx------. 1 postgres postgres   278 Jul 13 12:11 failover.sh
@@ -705,17 +716,17 @@ Make sure the log directories for _pgpool-II_ exist and have proper permissions:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]$ mkdir /var/log/pgpool
-[root@onmssrv01 ~]$ chown postgres:postgres /var/log/pgpool
-[root@onmssrv02 ~]$ mkdir /var/log/pgpool
-[root@onmssrv02 ~]$ chown postgres:postgres /var/log/pgpool
+[root@onmssrv01 ~]$ mkdir /var/log/pgpool-II-95
+[root@onmssrv01 ~]$ chown postgres:postgres /var/log/pgpool-II-95
+[root@onmssrv02 ~]$ mkdir /var/log/pgpool-II-95
+[root@onmssrv02 ~]$ chown postgres:postgres /var/log/pgpool-II-95
 ----
 
 Once you have all the files properly configured, use _rsync_ to copy over all the files to the other _Pgpool-II_ server (i.e. _onmssrv02_):
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II/ onmssrv02:/etc/pgpool-II/
+[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-95/ onmssrv02:/etc/pgpool-II-95/
 ----
 
 The _pgpool-II_ service is ready to be started.
@@ -762,13 +773,13 @@ First, verify with the `psql` command that you can reach the databases using the
 ----
 [root@onmssrv01 ~]# psql -U pgpool -h pgdbsrv01 -d postgres
 Password for user pgpool:
-psql (9.4.4)
+psql (9.5.3)
 Type "help" for help.
 
 postgres=# \q
 [root@onmssrv01 ~]# psql -U pgpool -h pgdbsrv02 -d postgres
 Password for user pgpool:
-psql (9.4.4)
+psql (9.5.3)
 Type "help" for help.
 
 postgres=# \q
@@ -776,7 +787,7 @@ postgres=# \q
 
 If you can’t connect to the databases, check _iptables_, the user credentials and `pg_hba.conf` on the database servers and the _pgpool-II_ configuration files.
 
-Remember to test the connection from the other _OpenNMS_ server (i.e. _onmssrv02_).
+IMPORTANT: Remember to test the connection from the other _OpenNMS_ server (i.e. _onmssrv02_).
 
 In order to test _pgpool-II_, we need to start the service.
 Execute the following commands from one _OpenNMS_ server only, as the _pgpool-II_ should run on one machine.
@@ -785,14 +796,14 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# service pgpool start
+[root@onmssrv01 ~]# service pgpool-II-95 start
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# systemctl start pgpool
+[root@onmssrv01 ~]# systemctl start pgpool-II-95
 ----
 
 Check the logs to verify _pgpool-II_ was started correctly:
@@ -801,40 +812,43 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# cat /var/log/pgpool.log
-2015-07-13 12:33:05: pid 2145: LOG:  Backend status file /var/log/pgpool_status does not exist
-2015-07-13 12:33:05: pid 2145: LOG:  Setting up socket for 0.0.0.0:9999
-2015-07-13 12:33:05: pid 2145: LOG:  Setting up socket for :::9999
-2015-07-13 12:33:05: pid 2145: LOG:  pgpool-II successfully started. version 3.4.2 (tataraboshi)
-2015-07-13 12:33:05: pid 2145: LOG:  find_primary_node: checking backend no 0
-2015-07-13 12:33:05: pid 2145: LOG:  find_primary_node: primary node id is 0
+[root@onmssrv01 ~]# grep pgpool /var/log/messages
+Jun 17 14:04:33 onmssrv01 pgpool: 2016-06-17 14:04:33: pid 32076: LOG:  Backend status file /var/log/pgpool-II-95/pgpool_status does not exist
+Jun 17 14:04:33 onmssrv01 pgpool: 2016-06-17 14:04:33: pid 32076: LOG:  Setting up socket for 0.0.0.0:9999
+Jun 17 14:04:33 onmssrv01 pgpool: 2016-06-17 14:04:33: pid 32076: LOG:  Setting up socket for :::9999
+Jun 17 14:04:33 onmssrv01 pgpool: 2016-06-17 14:04:33: pid 32076: LOG:  pgpool-II successfully started. version 3.5.2 (ekieboshi)
+Jun 17 14:04:33 onmssrv01 pgpool: 2016-06-17 14:04:33: pid 32076: LOG:  find_primary_node: checking backend no 0
+Jun 17 14:04:33 onmssrv01 pgpool: 2016-06-17 14:04:33: pid 32076: LOG:  find_primary_node: primary node id is 0
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# systemctl status pgpool
-pgpool.service - pgpool-II
-   Loaded: loaded (/usr/lib/systemd/system/pgpool.service; disabled)
-   Active: active (running) since Wed 2015-07-29 18:38:18 UTC; 2min 41s ago
- Main PID: 18369 (pgpool)
-   CGroup: /system.slice/pgpool.service
-           ├─18369 /usr/bin/pgpool -f /etc/pgpool-II/pgpool.conf -n
-           ├─18437 pgpool: wait for connection request
-           ├─18438 pgpool: wait for connection request
-…
-           ├─18722 pgpool: PCP: wait for connection request
-           └─18723 pgpool: worker process
+[root@onmssrv01 ~]# systemctl status pgpool-II-95
+● pgpool-II-95.service - PGPool-II Middleware Between PostgreSQL Servers And PostgreSQL Database Clients
+   Loaded: loaded (/usr/lib/systemd/system/pgpool-II-95.service; disabled; vendor preset: disabled)
+   Active: active (running) since Fri 2016-06-17 14:04:33 EDT; 47s ago
+  Process: 32023 ExecStartPre=/usr/local/bin/dbcleanup.sh (code=exited, status=0/SUCCESS)
+ Main PID: 32076 (pgpool)
+   CGroup: /system.slice/pgpool-II-95.service
+           ├─32076 /usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf -n --discard-status
+           ├─32078 pgpool: wait for connection request
+           ....
+           ├─32139 pgpool: PCP: wait for connection request
+           └─32140 pgpool: worker process
 
-Jul 29 18:55:02 onmssrv01.local systemd[1]: Starting pgpool-II...
-Jul 29 18:55:02 onmssrv01.local systemd[1]: Started pgpool-II.
-Jul 29 18:55:02 onmssrv01.local pgpool[18661]: 2015-07-29 18:55:02: pid 18661: LOG:  reading status file: 1 th backend is set to down status
-Jul 29 18:55:02 onmssrv01.local pgpool[18661]: 2015-07-29 18:55:02: pid 18661: LOG:  Setting up socket for 0.0.0.0:9999
-Jul 29 18:55:02 onmssrv01.local pgpool[18661]: 2015-07-29 18:55:02: pid 18661: LOG:  Setting up socket for :::9999
-Jul 29 18:55:02 onmssrv01.local pgpool[18661]: 2015-07-29 18:55:02: pid 18661: LOG:  pgpool-II successfully started. version 3.4.3 (tataraboshi)
-Jul 29 18:55:02 onmssrv01.local pgpool[18661]: 2015-07-29 18:55:02: pid 18661: LOG:  find_primary_node: checking backend no 0
-Jul 29 18:55:02 onmssrv01.local pgpool[18661]: 2015-07-29 18:55:02: pid 18661: LOG:  find_primary_node: primary node id is 0
+Jun 17 14:04:33 onmssrv01.local dbcleanup.sh[32023]: pg_terminate_backend
+Jun 17 14:04:33 onmssrv01.local dbcleanup.sh[32023]: ----------------------
+Jun 17 14:04:33 onmssrv01.local dbcleanup.sh[32023]: (0 rows)
+Jun 17 14:04:33 onmssrv01.local systemd[1]: Started PGPool-II Middleware Between PostgreSQL Servers And PostgreSQL Database Clients.
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  Backend status file /var/log/pgpool-II-95/... exist
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  Setting up socket for 0.0.0.0:9999
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  Setting up socket for :::9999
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  pgpool-II successfully started. version 3....boshi)
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  find_primary_node: checking backend no 0
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  find_primary_node: primary node id is 0
+Hint: Some lines were ellipsized, use -l to show in full.
 ----
 
 Or,
@@ -842,14 +856,12 @@ Or,
 [source, bash]
 ----
 [root@onmssrv01 ~]# journalctl | grep pgpool | tail
-Jul 29 18:58:41 onmssrv01.local systemd[1]: Stopped pgpool-II.
-Jul 29 18:58:46 onmssrv01.local systemd[1]: Starting pgpool-II...
-Jul 29 18:58:46 onmssrv01.local systemd[1]: Started pgpool-II.
-Jul 29 18:58:46 onmssrv01.local pgpool[18740]: 2015-07-29 18:58:46: pid 18740: LOG:  Setting up socket for 0.0.0.0:9999
-Jul 29 18:58:46 onmssrv01.local pgpool[18740]: 2015-07-29 18:58:46: pid 18740: LOG:  Setting up socket for :::9999
-Jul 29 18:58:46 onmssrv01.local pgpool[18740]: 2015-07-29 18:58:46: pid 18740: LOG:  pgpool-II successfully started. version 3.4.3 (tataraboshi)
-Jul 29 18:58:46 onmssrv01.local pgpool[18740]: 2015-07-29 18:58:46: pid 18740: LOG:  find_primary_node: checking backend no 0
-Jul 29 18:58:46 onmssrv01.local pgpool[18740]: 2015-07-29 18:58:46: pid 18740: LOG:  find_primary_node: primary node id is 0
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  Backend status file /var/log/pgpool-II-95/pgpool_status does not exist
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  Setting up socket for 0.0.0.0:9999
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  Setting up socket for :::9999
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  pgpool-II successfully started. version 3.5.2 (ekieboshi)
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  find_primary_node: checking backend no 0
+Jun 17 14:04:33 onmssrv01.local pgpool[32076]: 2016-06-17 14:04:33: pid 32076: LOG:  find_primary_node: primary node id is 0
 ----
 
 Let’s test if everything is working by executing a query on the databases via _pgpool-II_:
@@ -870,7 +882,7 @@ Password for user pgpool:
 (4 rows)
 ----
 
-This should also work from another host that has network access to the _pgpool-II_ machine.
+This should also work from another host that has network access to the _pgpool-II_ machine, assuming that host is has the appropriate permissions in /etc/pgpool-II-95/pool_hba.conf.
 
 _Pgpool-II_ has a range of `show`-commands available that allow you to get the status of _pgpool-II_ itself.
 They’re executed as normal _SQL_ but will be intercepted by _pgpool-II_.
@@ -881,42 +893,44 @@ To get the status of the nodes connected to _pgpool-II_:
 ----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
- node_id | hostname  | port | status | lb_weight |  role
----------+-----------+------+--------+-----------+---------
- 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary
- 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | standby
+ node_id | hostname  | port | status | lb_weight |  role   | select_cnt
+---------+-----------+------+--------+-----------+---------+------------
+ 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary | 1
+ 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | standby | 0
 (2 rows)
 ----
 
-If for some reason, the status is not 2 or you see problems on the logs, double check the configuration of pgpool in pgpool.conf (specially the section related with the _PostgreSQL_ servers).
+If for some reason, the status is not 2 or you see problems on the logs, double check the configuration of _pgpool-II_ in `pgpool.conf` (specially the section related with the _PostgreSQL_ servers).
 It might be possible that you must re-attach the failed server:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres X
+[root@onmssrv01 ~]# pcp_attach_node -h localhost -p 9898 -U postgres X
 ----
 
 Replace X with the `node_id` from the `show pool_nodes` command.
 
-Finally, stop the _pgpool-II_ service and repeat the connection test from _onmssrv02_.
+Finally, stop the _pgpool-II_ service:
 
 On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# service pgpool stop
+[root@onmssrv01 ~]# service pgpool-II-95 stop
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# systemctl stop pgpool
+[root@onmssrv01 ~]# systemctl stop pgpool-II-95
 ----
+
+WARNING: Remember to repeat the connection test from _onmssrv02_. Be sure that /etc/pgpool-II-95 has been synched between both servers.
 
 === Test Failover
 
-In order to test the failover with _pgpool-II_, the application must be running on one of the _OpenNMS_ servers; so make sure it is running before continue.
+In order to test the failover with _pgpool-II_, the application must be running on one of the _OpenNMS_ servers; so make sure it is running only on `onmssrv01` before continue.
 
 We can easily test the failover scenario by bringing down the primary database node and see what happens:
 
@@ -924,14 +938,14 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# service postgresql-9.4 stop
+[root@pgdbsrv01 ~]# service postgresql-9.5 stop
 ----
 
 On RHEL/CentOS 7:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# systemctl stop postgresql-9.4
+[root@pgdbsrv01 ~]# systemctl stop postgresql-9.5
 ----
 
 That will stop the _PostgreSQL_ on the primary/master server.
@@ -947,10 +961,10 @@ Result on _pgpool-II_:
 ----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
- node_id | hostname  | port | status | lb_weight |  role
----------+-----------+------+--------+-----------+---------
- 0       | pgdbsrv01 | 5432 | 3      | 0.500000  | standby
- 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | primary
+ node_id | hostname  | port | status | lb_weight |  role   | select_cnt
+---------+-----------+------+--------+-----------+---------+------------
+ 0       | pgdbsrv01 | 5432 | 3      | 0.500000  | standby | 0
+ 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | primary | 0
 (2 rows)
 ----
 
@@ -960,25 +974,26 @@ Result in _repmgr_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# su - postgres -c " /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf cluster show"
-[2015-07-13 13:58:27] [INFO] connecting to database
-Role      | Connection String
-[2015-07-13 13:58:27] [ERROR] connection to database failed: could not connect to server: Connection refused
-	Is the server running on host "pgdbsrv01" (192.168.205.163) and accepting
+[root@pgdbsrv02 ~]# su - postgres -c " /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf cluster show"
+[2016-06-17 14:46:48] [INFO] connecting to database
+Role      | Name      | Upstream | Connection String
+----------+-----------|----------|-----------------------------------------
+[2016-06-17 14:46:48] [ERROR] connection to database failed: could not connect to server: Connection refused
+	Is the server running on host "pgdbsrv01" (192.168.205.153) and accepting
 	TCP/IP connections on port 5432?
 
-  FAILED  | host=pgdbsrv01 user=repmgr dbname=repmgr
-* master  | host=pgdbsrv02 user=repmgr dbname=repmgr
+  FAILED  | pgdbsrv01 |          | host=pgdbsrv01 user=repmgr dbname=repmgr
+* master  | pgdbsrv02 |          | host=pgdbsrv02 user=repmgr dbname=repmgr
 ----
 
-The failover script should add some useful information to `/var/log/pgpool/pgpool_failover.log`, when a failover happens:
+The failover script should add some useful information to `/var/log/pgpool-II-95/pgpool_failover.log`, when a failover happens:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# cat /var/log/pgpool/pgpool_failover.log
-Wed Jul 29 19:02:49 UTC 2015
+[root@onmssrv01 ~]# cat /var/log/pgpool-II-95/pgpool_failover.log
+Fri Jun 17 14:44:49 EDT 2016
 Failed node: pgdbsrv01, Promoting pgdbsrv02 ...
-+ /usr/bin/ssh -T -l postgres pgdbsrv02 '/usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf standby promote 2>/dev/null 1>/dev/null <&-'
++ /usr/bin/ssh -T -l postgres pgdbsrv02 '/usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf standby promote 2>/dev/null 1>/dev/null <&-'
 + exit 0
 ----
 
@@ -1001,75 +1016,81 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# service postgresql-9.4 stop
+[root@pgdbsrv01 ~]# service postgresql-9.5 stop
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# systemctl stop postgresql-9.4
+[root@pgdbsrv01 ~]# systemctl stop postgresql-9.5
 ----
 
 Then, we’ll sync the data of _pgdbsrv02_ (the current primary) to the previously failed node (_pgdbsrv01_).
-In the meanwhile, the database has got some updates and changes so we need to make sure that those get replicated to _pgdbsrv011_ before we start it as a standby.
+In the meanwhile, the database has got some updates and changes so we need to make sure that those get replicated to _pgdbsrv01_ before we start it as a standby.
 
 There are two way to perform the sync operation:
 
-(1) Perform a full synchronization, in other words, recreate the whole `/var/lib/pgsql/9.4/data` directory from scratch:
+(1) Perform a full synchronization, in other words, recreate the whole `/var/lib/pgsql/9.5/data` directory from scratch:
 
 [source, bash]
 ----
 [root@pgdbsrv01 ~]# su - postgres
--bash-4.1$ rm -rf 9.4/data/
--bash-4.1$ /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf --verbose -D /var/lib/pgsql/9.4/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
-[2015-07-13 17:26:19] [NOTICE] opening configuration file: /etc/repmgr/9.4/repmgr.conf
-[2015-07-13 17:26:19] [NOTICE] destination directory '/var/lib/pgsql/9.4/data' provided
-[2015-07-13 17:26:19] [INFO] connecting to upstream node
-[2015-07-13 17:26:19] [INFO] connected to upstream node, checking its state
-[2015-07-13 17:26:19] [INFO] Successfully connected to upstream node. Current installation size is 39 MB
-[2015-07-13 17:26:19] [NOTICE] starting backup...
-[2015-07-13 17:26:19] [INFO] creating directory "/var/lib/pgsql/9.4/data"...
-[2015-07-13 17:26:19] [INFO] executing: '/usr/pgsql-9.4/bin/pg_basebackup -l "repmgr base backup"  -h pgdbsrv02 -p 5432 -U repmgr -D /var/lib/pgsql/9.4/data --xlog-method=stream'
-[2015-07-13 17:26:22] [NOTICE] standby clone (using pg_basebackup) complete
-[2015-07-13 17:26:22] [NOTICE] HINT: you can now start your PostgreSQL server
-[2015-07-13 17:26:22] [NOTICE] for example : pg_ctl -D /var/lib/pgsql/9.4/data start
+-bash-4.1$ rm -rf 9.5/data/
+-bash-4.1$ /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose -D /var/lib/pgsql/9.4/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
+[2016-06-17 14:49:37] [NOTICE] using configuration file "/etc/repmgr/9.5/repmgr.conf"
+[2016-06-17 14:49:37] [NOTICE] destination directory '/var/lib/pgsql/9.4/data' provided
+[2016-06-17 14:49:37] [INFO] connecting to upstream node
+[2016-06-17 14:49:37] [INFO] connected to upstream node, checking its state
+[2016-06-17 14:49:37] [INFO] Successfully connected to upstream node. Current installation size is 28 MB
+[2016-06-17 14:49:37] [INFO] creating directory "/var/lib/pgsql/9.4/data"...
+[2016-06-17 14:49:37] [NOTICE] starting backup (using pg_basebackup)...
+[2016-06-17 14:49:37] [HINT] this may take some time; consider using the -c/--fast-checkpoint option
+[2016-06-17 14:49:37] [INFO] executing: '/usr/pgsql-9.5/bin/pg_basebackup -l "repmgr base backup"  -D /var/lib/pgsql/9.4/data -h pgdbsrv02 -p 5432 -U repmgr --xlog-method=stream'
+[2016-06-17 14:49:38] [NOTICE] standby clone (using pg_basebackup) complete
+[2016-06-17 14:49:38] [NOTICE] you can now start your PostgreSQL server
+[2016-06-17 14:49:38] [HINT] for example : pg_ctl -D /var/lib/pgsql/9.4/data start
+[2016-06-17 14:49:38] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
 ----
 
-IMPORTANT: if the command execution ask for the password configured for the repmgr user, execute the restorecon command to avoid SELinux issues when it is enforcing.
+IMPORTANT: If the command execution ask for the password configured for the repmgr user, execute the restorecon command to avoid SELinux issues when it is enforcing.
 
 (2) Perform a partial synchronization which can be a lot faster than the first procedure, to synchronize only the things that have been changed during the outage on the DB server, which assumes the data directory exist and it is not corrupted. If you’re not sure about the state of the data directory, use the first procedure:
 
 [source, bash]
 ----
 [root@pgdbsrv01 ~]# su - postgres
--bash-4.1$ /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf --verbose --force --rsync-only -D /var/lib/pgsql/9.4/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
-[2015-07-13 17:25:17] [NOTICE] opening configuration file: /etc/repmgr/9.4/repmgr.conf
-[2015-07-13 17:25:17] [NOTICE] destination directory '/var/lib/pgsql/9.4/data' provided
-[2015-07-13 17:25:17] [INFO] connecting to upstream node
-[2015-07-13 17:25:17] [INFO] connected to upstream node, checking its state
-[2015-07-13 17:25:17] [INFO] Successfully connected to upstream node. Current installation size is 39 MB
-[2015-07-13 17:25:17] [NOTICE] starting backup...
-[2015-07-13 17:25:17] [WARNING] directory "/var/lib/pgsql/9.4/data" exists but is not empty
-[2015-07-13 17:25:22] [INFO] standby clone: master data directory '/var/lib/pgsql/9.4/data'
-[2015-07-13 17:25:22] [INFO] rsync command line: 'rsync --archive --checksum --compress --progress --rsh=ssh --delete --checksum --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control --exclude=postgresql.auto.conf.tmp --exclude=pgsql_tmp* --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/* --exclude=pg_replslot/* postgres@pgdbsrv02:/var/lib/pgsql/9.4/data/* /var/lib/pgsql/9.4/data'
+-bash-4.1$ /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose --force --rsync-only -D /var/lib/pgsql/9.5/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
+[2016-06-17 14:53:20] [NOTICE] using configuration file "/etc/repmgr/9.5/repmgr.conf"
+[2016-06-17 14:53:20] [NOTICE] destination directory '/var/lib/pgsql/9.5/data' provided
+[2016-06-17 14:53:20] [INFO] connecting to upstream node
+[2016-06-17 14:53:20] [INFO] connected to upstream node, checking its state
+[2016-06-17 14:53:20] [INFO] Successfully connected to upstream node. Current installation size is 28 MB
+[2016-06-17 14:53:20] [INFO] creating directory "/var/lib/pgsql/9.5/data"...
+[2016-06-17 14:53:20] [NOTICE] starting backup (using rsync)...
+[2016-06-17 14:53:21] [INFO] standby clone: master data directory '/var/lib/pgsql/9.5/data'
+[2016-06-17 14:53:21] [INFO] rsync command line: 'rsync --archive --checksum --compress --progress --rsh=ssh --delete --checksum --exclude=postmaster.pid --exclude=postmaster.opts --exclude=global/pg_control --exclude=recovery.conf --exclude=recovery.done --exclude=postgresql.auto.conf.tmp --exclude=pgsql_tmp* --exclude=pg_xlog/* --exclude=pg_log/* --exclude=pg_stat_tmp/* postgres@pgdbsrv02:/var/lib/pgsql/9.5/data/* /var/lib/pgsql/9.5/data'
 receiving incremental file list
-...
-total size is 41881588  speedup is 238.68
-[2015-07-13 17:25:22] [INFO] standby clone: local control file '/var/lib/pgsql/9.4/data/global'
-[2015-07-13 17:25:22] [INFO] standby clone: master control file '/var/lib/pgsql/9.4/data/global/pg_control'
-[2015-07-13 17:25:22] [INFO] rsync command line: 'rsync --archive --checksum --compress --progress --rsh=ssh --delete --checksum postgres@pgdbsrv02:/var/lib/pgsql/9.4/data/global/pg_control /var/lib/pgsql/9.4/data/global'
+.....
+sent 21861 bytes  received 3528512 bytes  2366915.33 bytes/sec
+total size is 30168542  speedup is 8.50
+[2016-06-17 14:53:22] [INFO] read_backup_label: parsing backup label file '/var/lib/pgsql/9.5/data/backup_label'
+Label: repmgr_standby_clone_1466189601; file: 000000020000000000000009
+[2016-06-17 14:53:22] [INFO] standby clone: local control file '/var/lib/pgsql/9.5/data/global'
+[2016-06-17 14:53:22] [INFO] standby clone: master control file '/var/lib/pgsql/9.5/data/global/pg_control'
+[2016-06-17 14:53:22] [INFO] rsync command line: 'rsync --archive --checksum --compress --progress --rsh=ssh --delete --checksum postgres@pgdbsrv02:/var/lib/pgsql/9.5/data/global/pg_control /var/lib/pgsql/9.5/data/global'
 receiving incremental file list
 pg_control
         8192 100%    7.81MB/s    0:00:00 (xfer#1, to-check=0/1)
 
-sent 102 bytes  received 244 bytes  692.00 bytes/sec
-total size is 8192  speedup is 23.68
-[2015-07-13 17:25:22] [NOTICE] notifying master about backup completion...
+sent 30 bytes  received 268 bytes  596.00 bytes/sec
+total size is 8192  speedup is 27.49
+[2016-06-17 14:53:22] [NOTICE] notifying master about backup completion...
 NOTICE:  pg_stop_backup complete, all required WAL segments have been archived
-[2015-07-13 17:25:23] [NOTICE] standby clone (using rsync) complete
-[2015-07-13 17:25:23] [NOTICE] HINT: you can now start your PostgreSQL server
-[2015-07-13 17:25:23] [NOTICE] for example : pg_ctl -D /var/lib/pgsql/9.4/data start
+[2016-06-17 14:53:23] [NOTICE] standby clone (using rsync) complete
+[2016-06-17 14:53:23] [NOTICE] you can now start your PostgreSQL server
+[2016-06-17 14:53:23] [HINT] for example : pg_ctl -D /var/lib/pgsql/9.5/data start
+[2016-06-17 14:53:23] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
 ----
 
 As you can see the command is basically the same, the only change is the addition of the `--rsync-only` option.
@@ -1080,41 +1101,46 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# service postgresql-9.4 start
+[root@pgdbsrv01 ~]# service postgresql-9.5 start
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# systemctl start postgresql-9.4
+[root@pgdbsrv01 ~]# systemctl start postgresql-9.5
 ----
 
 _Repmgr_ notices automatically that the new standby got available:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# sudo su - postgres -c " /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf cluster show"
-Role       | Connection String
-   standby | host=pgdbsrv1 user=repmgr dbname=repmgr
- * master  | host=pgdbsrv2 user=repmgr dbname=repmgr
+[root@pgdbsrv01 ~]# sudo su - postgres -c " /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf cluster show"
+[2016-06-17 14:55:14] [INFO] connecting to database
+Role      | Name      | Upstream | Connection String
+----------+-----------|----------|-----------------------------------------
+  standby | pgdbsrv01 |          | host=pgdbsrv01 user=repmgr dbname=repmgr
+* master  | pgdbsrv02 |          | host=pgdbsrv02 user=repmgr dbname=repmgr
 ----
 
 For _pgpool-II_, we need to re-attach the failed node in order for it to be visible and usable as a standby-node:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres 0
+[root@onmssrv01 ~]# pcp_attach_node -h localhost -p 9898 -U postgres 0
+Password:
+pcp_attach_node -- Command Successful
+
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
- node_id | hostname | port | status | lb_weight |  role
----------+----------+------+--------+-----------+---------
- 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | standby
- 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | primary
+ node_id | hostname  | port | status | lb_weight |  role   | select_cnt
+---------+-----------+------+--------+-----------+---------+------------
+ 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | standby | 0
+ 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | primary | 0
 (2 rows)
 ----
 
-For the `pcp_attach_node` command, it is required to use the authentication credentials defined on /etc/pgpool-II/pcp.conf. Also, it is required to know the node_id of the node you want to re-attach. The "show pool_nodes" will give you all the information (including the `node_id`).
+For the `pcp_attach_node` command, it is required to use the authentication credentials defined on `/etc/pgpool-II-95/pcp.conf`. Also, it is required to know the node_id of the node you want to re-attach. The "show pool_nodes" command will give you all the information (including the `node_id`).
 In this case the _ID_ for _pgdbsrv01_ is `0`.
 
 At this point, we’re back in a redundant status where the old standby (_pgdbsrv02_) functions as the primary and the old primary (_pgdbsrv01_) functions as a standby.
@@ -1131,14 +1157,14 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# service postgresql-9.4 stop
+[root@pgdbsrv02 ~]# service postgresql-9.5 stop
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# systemctl stop postgresql-9.4
+[root@pgdbsrv02 ~]# systemctl stop postgresql-9.5
 ----
 
 When the master ( _pgdbsrv02_ ) stopped, a failover is triggered and _pgdbsrv01_ gets assigned as primary again:
@@ -1147,10 +1173,10 @@ When the master ( _pgdbsrv02_ ) stopped, a failover is triggered and _pgdbsrv01_
 ----
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
 Password for user pgpool:
- node_id | hostname  | port | status | lb_weight |  role
----------+-----------+------+--------+-----------+---------
- 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary
- 1       | pgdbsrv02 | 5432 | 3      | 0.500000  | standby
+ node_id | hostname  | port | status | lb_weight |  role   | select_cnt
+---------+-----------+------+--------+-----------+---------+------------
+ 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary | 0
+ 1       | pgdbsrv02 | 5432 | 3      | 0.500000  | standby | 0
 (2 rows)
 ----
 
@@ -1159,10 +1185,10 @@ Now, sync _pgdbsrv02_ with the new primary ( _pgdbsrv01_ ) and start it (this ti
 [source, bash]
 ----
 [root@pgdbsrv02 ~]# sudo su - postgres
--bash-4.2$ /usr/pgsql-9.4/bin/repmgr -f /etc/repmgr/9.4/repmgr.conf --verbose --force --rsync-only -D /var/lib/pgsql/9.4/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv01
+-bash-4.2$ /usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose --force --rsync-only -D /var/lib/pgsql/9.5/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv01
 ----
 
-Then, start the _postgresql-9.4_ service.
+Then, start the _postgresql-9.5_ service.
 
 On _RHEL/CentOS 6_:
 
@@ -1182,12 +1208,16 @@ Finally, Re-attach _pgdbsrv02_ to _pgpool-II_ in order to use it as a slave:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres 1
+[root@onmssrv01 ~]# pcp_attach_node -h localhost -p 9898 -U postgres 1
+Password:
+pcp_attach_node -- Command Successful
+
 [root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
- node_id | hostname | port | status | lb_weight |  role
----------+----------+------+--------+-----------+---------
- 0       | pgdbsrv01| 5432 | 2      | 0.500000  | primary
- 1       | pgdbsrv02| 5432 | 2      | 0.500000  | standby
+Password for user pgpool:
+ node_id | hostname  | port | status | lb_weight |  role   | select_cnt
+---------+-----------+------+--------+-----------+---------+------------
+ 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary | 0
+ 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | standby | 0
 (2 rows)
 ----
 
@@ -1243,26 +1273,29 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# service postgresql-9.4 start
+[root@pgdbsrv02 ~]# service postgresql-9.5 start
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@pgdbsrv02 ~]# systemctl start postgresql-9.4
+[root@pgdbsrv02 ~]# systemctl start postgresql-9.5
 ----
 
 Finally, Re-attach _pgdbsrv02_ to _pgpool-II_ in order to use it as a slave:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcp_attach_node 0 localhost 9898 postgres postgres 1
-[root@onmssrv01 ~]# psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
- node_id | hostname | port | status | lb_weight |  role
----------+----------+------+--------+-----------+---------
- 0       | pgdbsrv01| 5432 | 2      | 0.500000  | primary
- 1       | pgdbsrv02| 5432 | 2      | 0.500000  | standby
+[root@onmssrv01 ~]# pcp_attach_node -h localhost -p 9898 -U postgres 1
+Password:
+pcp_attach_node -- Command Successful
+[root@onmssrv01 log]#  psql -U pgpool -h onmssrv01 -p 9999 -d postgres -c "show pool_nodes"
+Password for user pgpool:
+ node_id | hostname  | port | status | lb_weight |  role   | select_cnt
+---------+-----------+------+--------+-----------+---------+------------
+ 0       | pgdbsrv01 | 5432 | 2      | 0.500000  | primary | 0
+ 1       | pgdbsrv02 | 5432 | 2      | 0.500000  | standby | 0
 (2 rows)
 ----
 
@@ -1272,11 +1305,11 @@ IMPORTANT: When you’re done testing _pgpool-II_, remember to stop the service 
 
 === Troubleshooting
 
-In case you have trouble starting the _pgpool_ service, be sure that it is not running on the other _OpenNMS_ machine, and also that the socket files (i.e. `/tmp/.s.PGSQL.9898` and `/tmp/.s.PGSQL.9999`) don’t exist.
+In case you have trouble starting the _pgpool-II_ service, be sure that it is not running on the other _OpenNMS_ machine, and also that the socket files (i.e. `/tmp/.s.PGSQL.9898` and `/tmp/.s.PGSQL.9999`) don’t exist.
 If they exist, remove them prior start.
-In theory this cleanup is always performed by the _pgpool_ initialization script, but it is important to understand why.
+In theory this cleanup is always performed by the _pgpool-II_ initialization script, but it is important to understand why.
 
 The cleanup is performed through the script located at `/usr/local/bin/dbcleanup.sh` as mentioned on an earlier section.
-The reason to have this integrated with the _pgpool_ initialization script is to be sure that _OpenNMS_ will be able to initialize the _DB Connection Pool_ without issues.
-Because of this, prior every single start request of the _OpenNMS_ application (either manually or through the cluster), _pgpool_ must be restarted first.
+The reason to have this integrated with the _pgpool-II_ initialization script is to be sure that _OpenNMS_ will be able to initialize the _DB Connection Pool_ without issues.
+Because of this, prior every single start request of the _OpenNMS_ application (either manually or through the cluster), _pgpool-II_ must be restarted first.
 As an alternative, prior starting _OpenNMS_, execute the `dbcleanup.sh` script to be sure that there are no connections against the _DB_ servers when _OpenNMS_ starts.

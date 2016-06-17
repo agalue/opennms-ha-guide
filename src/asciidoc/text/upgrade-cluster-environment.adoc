@@ -47,7 +47,7 @@ For this reason, upgrading to 3.5 or higher is considered a migration.
 . Log into the standby server (use the cluster commands to verify that _pgpool/opennms_ are not running).
 . Perform the upgrade of the _pgpool_ packages (or the full operating system if apply).
 . Reboot the server, to ensure it will properly starts.
-. Remove the content of `/etc/pgpool-II`, or move it to a different location.
+. Remove the content of `/etc/pgpool-II-95`, or move it to a different location.
 
 ==== Primary server
 

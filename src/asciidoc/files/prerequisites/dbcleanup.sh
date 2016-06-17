@@ -8,8 +8,8 @@ ONMS_DB="opennms"
 
 date
 echo
-rm -f /tmp/.s.PGSQL.9* /var/log/pgpool/*
+rm -f /tmp/.s.PGSQL.9* /var/log/pgpool-II-95/*
 for pgserver in $DB_SRVS; do
 echo "Cleaning up DB connections on $pgserver ..."
-su - postgres -c "/usr/bin/ssh -T -l postgres $pgserver '~/9.4/cleanup.sh $ONMS_DB $ONMS_SRV'"
+su - postgres -c "/usr/bin/ssh -T -l postgres $pgserver '~/9.5/cleanup.sh $ONMS_DB $ONMS_SRV'"
 done
