@@ -15,28 +15,30 @@ For _RHEL/CentOS 6_, the default cluster services are based on _CMAN/Ricci/Rgman
 _RHEL/CentOS 7_ distributions use cluster services based upon _Pacemaker_. _Pacemaker_ is also an available option for _RHEL/CentOS 6_.
 Both technologies rely upon _Corosync_.
 
-The common elements for _OpenNMS_ are the configuration directory, the data directory, and the _PostgreSQL_ database. 
-The common directories will exist upon a separate server and will be shared via _NFS_. 
-Other technologies such as _DRBD or _GFS2_ can be used.
+The common elements for _OpenNMS_ are the configuration directory, the data directory, and the _PostgreSQL_ database.
+The common directories will exist upon a separate server and will be shared via _NFS_.
+Other technologies such as _DRBD_ or _GFS2_ can be used.
 The database will be deployed on a separate set of servers.
 
 The need for a redundant, highly-available database is important.
 When using _PostgreSQL_, streaming replication can be setup to provide data redundancy on two or more nodes.
 
 _PostgreSQL_ database redundancy is achieved by using built-in streaming replication.
-Another tool, `repmgr`, will be used for easier control of the replication between redundant _PostgreSQL_ instances.
+Another tool, `Repmgr`, will be used for easier control of the replication between redundant _PostgreSQL_ instances.
 The tool doesn’t replicate data itself but it allows easy control of the replication and the standby-server(s).
 _Repmgr_ also monitors the status of the entire replication process.
 
-More information about link:http://www.repmgr.org[repmgr].
-
-To use data from both database copies, _pgpool-II_ will be used. 
-_Pgpool-II_ can pool connections to nodes.
+To use data from both database copies, _PGpool-II_ will be used.
+_PGpool-II_ can pool connections to nodes.
 It will monitor node status and trigger failover via _repmgr_ if needed.
-_Pgpool-II_ has the capability to load-balance traffic based upon the type of SQL query.
+_PGpool-II_ has the capability to load-balance traffic based upon the type of SQL query.
 For example, a _SELECT query_ can be executed upon a read-only slave node and save resources on the read-write master node.
 
-From the client perspective, the database will be seen on only one server- the node running _pgpool-II_.
+From the client perspective, the database will be seen on only one server- the node running _PGpool-II_.
 The failover, standby recovery, etc., nodes will be hidden from the _OpenNMS_ server clients.
 
-More information about link:http://www.pgpool.net/[pgpool-II].
+**Links:**
+
+* link:http://clusterlabs.org[http://clusterlabs.org]
+* link:http://www.repmgr.org[http://www.repmgr.org]
+* link:http://www.pgpool.net[http://www.pgpool.net]
