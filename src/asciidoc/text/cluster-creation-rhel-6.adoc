@@ -34,10 +34,7 @@ If NetworkManager is installed, it is recommended to turn it off:
 
 Repeat the the above process for the standby server (i.e. _onmssrv02_).
 
-From the active node (i.e. _onmssrv01_), run the below command to create a new cluster.
-
-The following command will create the cluster configuration file `/etc/cluster/cluster.conf`.
-If the file already exists, it will replace the existing `cluster.conf` with the newly created `cluster.conf`.
+From the active node (i.e. _onmssrv01_), run the following command to create a new cluster (it will ask for the password configured for _ricci_):
 
 [source, bash]
 ----
@@ -45,7 +42,9 @@ If the file already exists, it will replace the existing `cluster.conf` with the
 onmssrv01.local
 ----
 
-The command will ask you for the password configured for _ricci_.
+The above command creates the cluster configuration file `/etc/cluster/cluster.conf`.
+If the file already exists, it will replace the existing `cluster.conf` with the newly created `cluster.conf`.
+
 
 [source, bash]
 ----
@@ -140,7 +139,6 @@ Once the failover domain is created, add both the nodes to the failover domain a
 [source, bash]
 ----
 [root@onmssrv01 ~]# ccs -h onmssrv01.local --addfailoverdomainnode onms_domain onmssrv01.local 1
-
 [root@onmssrv01 ~]# ccs -h onmssrv01.local --addfailoverdomainnode onms_domain onmssrv02.local 2
 ----
 
@@ -155,12 +153,12 @@ onms_domain: restricted=0, ordered=1, nofailback=1
 ----
 
 Now it is time to add the resources.
-This indicates the applications (i.e., _pgpool-II_ and _OpenNMS_) that should failover along with ip and the shared filesystem when a node fails.
+This indicates the applications (i.e., _pgpool-II_ and _OpenNMS_) that should failover along with IP and the shared filesystem when a node fails.
 
 When you are ready to add resources, there are 2 ways you can do this.
 You can add them as global resources, or add a resource directly to resource group or service.
 
-The advantage of adding resources as global resource is that if you want to add the resource to more than one service group you can just reference the global resource on your service or resource group.
+The advantage of adding resources as global is that if you want to add the resource to more than one service group you can just reference the global resource on your service or resource group.
 
 The global resources we’re going to add are the following:
 
@@ -184,7 +182,7 @@ Then, add the script resources:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# ccs --addresource script name=pgpool_bin file=/etc/init.d/pgpool
+[root@onmssrv01 ~]# ccs --addresource script name=pgpool_bin file=/etc/init.d/pgpool-II-95
 [root@onmssrv01 ~]# ccs --addresource script name=onms_bin file=/etc/init.d/opennms
 ----
 
@@ -243,7 +241,7 @@ The final `/etc/cluster/cluster.conf` should look like the following:
       <netfs export="/opt/opennms/etc" fstype="nfs4" host="nfssrv01.local" mountpoint="/opt/opennms/etc" name="onms_etc"/>
       <netfs export="/var/opennms" fstype="nfs4" host="nfssrv01.local" mountpoint="/opt/opennms/share" name="onms_var"/>
       <netfs export="/opt/opennms/pgpool" fstype="nfs4" host="nfssrv01.local" mountpoint="/etc/pgpool-II-95" name="pgpool_etc"/>
-      <script file="/etc/init.d/pgpool" name="pgpool_bin"/>
+      <script file="/etc/init.d/pgpool-II-95" name="pgpool_bin"/>
       <script file="/etc/init.d/opennms" name="onms_bin"/>
       <ip address="192.168.205.150" monitor_link="1"/>
     </resources>

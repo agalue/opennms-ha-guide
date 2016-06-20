@@ -26,13 +26,28 @@ The _PostgreSQL database_ will have its own cluster using streaming replication 
 
 Because security is important, _SELinux_ must be configured to be "enforcing." The internal firewall, either iptables on _RHEL/CentOS 6_ or _firewalld_ on _RHEL/CentOS 7_, must be enabled on all the servers involved in the cluster.
 
+=== Shared Storage
+
+There are multiple ways to implement the shared storage. The following procedure will assume that the configuration files and the metrics are going to be stored on a _NFS server_.
+
+Another approach would be use _DRBD_ (https://www.drbd.org/) to have a common filesystem synchronzed between the two servers on which the configuration files and the metrics are going to be stored.
+The advantage of this idea, is that there is no need to have an external server to store the shared information (like with NFS).
+The disadvantage is that this could be slow for a considerable big amount of metrics to be maintained.
+
+Starting with _OpenNMS_ _Horizon 17_ and _Meridian 2016_, _OpenNMS_ supports _Newts_ (http://newts.io/), which uses _Apache Cassandra_ (http://cassandra.apache.org/) to persist the metrics.
+In this case, the easiest way to deploy the cluster is use _DRBD _for the shared configuration files, and have a separate cluster with Cassandra to store the metrics.
+
+The section _DRBD_ explains how to configure this technology with _Pacemaker_.
+
+The section _Newts_ explains how to configure a Cassandra cluster to store the metrics, and how to configure _OpenNMS_ to use it.
+
 === Fencing/STONITH
 
 Fencing is a vital part of clustering which helps maintain data integrity.
 It ensures that out-of-sync, misbehaving nodes are removed from the cluster before they can do damage.
 
-Fencing is one of the first things to be configured for trouble avoidance. 
-Nodes without a configured fence device sometimes can hang the entire cluster as the other nodes wait for it to be fenced. 
+Fencing is one of the first things to be configured for trouble avoidance.
+Nodes without a configured fence device sometimes can hang the entire cluster as the other nodes wait for it to be fenced.
 In the extreme, an indefinite fencing wait time can occur if fencing is not configured.
 Ways to induce fencing include powering off a node with a remote power switch, disabling a _Fiber Channel_ switch port, or powering off the clustered node's virtual machine through a _VM Manager_ such as  _vCenter_.
 

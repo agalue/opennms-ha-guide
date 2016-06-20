@@ -16,14 +16,12 @@ Before we can use _PCS_, we need to configure public key authentication or give 
 [root@onmssrv01 ~]# passwd hacluster
 Changing password for user hacluster.
 New password:
-BAD PASSWORD: The password is shorter than 8 characters
 Retype new password:
 passwd: all authentication tokens updated successfully.
 
 [root@onmssrv02 ~]# passwd hacluster
 Changing password for user hacluster.
 New password:
-BAD PASSWORD: The password is shorter than 8 characters
 Retype new password:
 passwd: all authentication tokens updated successfully.
 ----
@@ -65,6 +63,14 @@ Killing any remaining services...
 Removing all cluster configuration files...
 onmssrv01: Succeeded
 onmssrv02: Succeeded
+
+Synchronizing pcsd certificates on nodes onmssrv01, onmssrv02...
+onmssrv02: Success
+onmssrv01: Success
+
+Restaring pcsd on the nodes in order to reload the certificates...
+onmssrv02: Success
+onmssrv01: Success
 ----
 
 The above command creates the cluster node configuration in `/etc/corosync/corosync.conf`.
@@ -90,11 +96,11 @@ To check the status of the cluster after starting it:
 ----
 [root@onmssrv01 ~]# pcs cluster status
 Cluster Status:
- Last updated: Wed Jul 29 19:40:41 2015
- Last change: Wed Jul 29 19:40:34 2015
- Current DC: NONE
- 2 Nodes configured
- 0 Resources configured
+ Last updated: Mon Jun 20 10:48:45 2016		Last change: Mon Jun 20 10:48:31 2016 by hacluster via crmd on onmssrv02
+ Stack: corosync
+ Current DC: onmssrv02 (version 1.1.13-10.el7_2.2-44eb2dd) - partition with quorum
+ 2 nodes and 6 resources configured
+ Online: [ onmssrv01 onmssrv02 ]
 
 PCSD Status:
   onmssrv01: Online
@@ -110,6 +116,10 @@ Pacemaker Nodes:
  Online: onmssrv01 onmssrv02
  Standby:
  Offline:
+Pacemaker Remote Nodes:
+ Online:
+ Standby:
+ Offline:
 ----
 
 IMPORTANT: In case they appear offline is because _stonish_ is enabled (more on this below).
@@ -123,7 +133,7 @@ runtime.totem.pg.mrp.srp.members.1.join_count (u32) = 1
 runtime.totem.pg.mrp.srp.members.1.status (str) = joined
 runtime.totem.pg.mrp.srp.members.2.config_version (u64) = 0
 runtime.totem.pg.mrp.srp.members.2.ip (str) = r(0) ip(192.168.205.152)
-runtime.totem.pg.mrp.srp.members.2.join_count (u32) = 2
+runtime.totem.pg.mrp.srp.members.2.join_count (u32) = 1
 runtime.totem.pg.mrp.srp.members.2.status (str) = joined
 
 [root@onmssrv01 ~]# pcs status corosync
@@ -140,9 +150,9 @@ To check the configuration for errors, and there still are some:
 [source, bash]
 ----
 [root@onmssrv01 ~]# crm_verify -L -V
-   error: unpack_resources: 	Resource start-up disabled since no STONITH resources have been defined
-   error: unpack_resources: 	Either configure some or disable STONITH with the stonith-enabled option
-   error: unpack_resources: 	NOTE: Clusters with shared data need STONITH to ensure data integrity
+   error: unpack_resources:   Resource start-up disabled since no STONITH resources have been defined
+   error: unpack_resources:   Either configure some or disable STONITH with the stonith-enabled option
+   error: unpack_resources:   NOTE: Clusters with shared data need STONITH to ensure data integrity
 Errors found during check: config not valid
 ----
 
@@ -184,7 +194,7 @@ To ignore a low quorum:
 Cluster Properties:
  cluster-infrastructure: corosync
  cluster-name: cluster_onms
- dc-version: 1.1.12-a14efad
+ dc-version: 1.1.13-10.el7_2.2-44eb2dd
  have-watchdog: false
  no-quorum-policy: ignore
  stonith-enabled: false
@@ -192,7 +202,7 @@ Cluster Properties:
 
 The cluster resources we’re going to add are the following:
 
-The floating IP Address
+* The floating IP Address
 * A shared filesystem for `/opt/opennms/etc`
 * A shared filesystem for `/var/opennms`
 * A shared filesystem for `/etc/pgpool-II-95`
@@ -203,12 +213,12 @@ One of the most common elements of a cluster is a set of resources that need to 
 
 The fundamental properties of a group are as follows:
 
-There is no limit to the number of resources a group can contain.
-Resources are started in the order in which you specify them.
-Resources are stopped in the reverse order in which you specify them.
-If a resource in the group cannot run anywhere, then no resource specified after that resource is allowed to run.
+* There is no limit to the number of resources a group can contain.
+* Resources are started in the order in which you specify them.
+* Resources are stopped in the reverse order in which you specify them.
+* If a resource in the group cannot run anywhere, then no resource specified after that resource is allowed to run.
 
-To simplify the configuration each resource creation instruction contains the group on which the resource should be added (in this case, onms_app). If the group doesn’t exist, it will be created automatically.
+To simplify the configuration each resource creation instruction contains the group on which the resource should be added (in this case, `onms_app`). If the group doesn’t exist, it will be created automatically.
 
 Create the virtual IP is the IP address that which will be contacted to reach the services (the OpenNMS application in our case):
 
@@ -246,7 +256,7 @@ Create the cluster resources for the application using _systemd_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool \
+[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool-II-95 \
 op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 
@@ -259,6 +269,8 @@ op monitor interval=60s on-fail=standby \
 
 The value for the start timeout for the _opennms_ resource, must be consistent with the value configured on `/opt/opennms/etc/opennms.conf` for `START_TIMEOUT`, and also with the value configured on `/lib/systemd/system/opennms.service` for `TimeoutStartSec`.
 
+WARNING: In general, it is advised to modify /opt/opennms/bin to use a more reliable way to verify if OpenNMS is up and running, as if there is a memory issue, or OpenNMS is frozen, "systemctl status opennms" might become unresponsive and could have bad side effects on the cluster. One way to deal with that is using `curl` to check the amount of alarms through the ReST API. If it returns a number, OpenNMS is alive, otherwise (including the timeout), OpenNMS should be considered unresponsive.
+
 Because all the cluster resources belong to the same group, all the resources will always run on the same machine.
 If something wrong happens with one of them, all the resources will be moved to another cluster node automatically.
 
@@ -268,33 +280,16 @@ This is basically the same behavior you see on _CMAN_ for _RHEL/CentOS 6_.
 
 You can tune the migration threshold to be more than `1`, and _Pacemaker_ will try to restart the service by that amount of times before migrate them to another node.
 
-Now, it is important to understand that with the creation of the resource group, a location constraint will be added automatically:
-
-[source, bash]
-----
-[root@onmssrv01 ~]# pcs constraint show --full
-Location Constraints:
-  Resource: onms_app
-    Enabled on: onmssrv01 (score:INFINITY) (role: Started) (id:cli-prefer-onms_app)
-Ordering Constraints:
-Colocation Constraints:
-----
-
-That means, if the resource are migrated to _onmssrv02_ because _onmssrv01_ is dead, when _onmssrv01_ is back, the resources will be moved back to _onmssrv01_, because this node is _preferred_.
-
 You can check the status of the cluster with the `pcs status` command:
 
 [source, bash]
 ----
 [root@onmssrv01 ~]# pcs status
 Cluster name: cluster_onms
-Last updated: Mon Jul 20 23:04:15 2015
-Last change: Mon Jul 20 23:01:24 2015
+Last updated: Mon Jun 20 10:57:20 2016		Last change: Mon Jun 20 10:50:21 2016 by root via cibadmin on onmssrv01
 Stack: corosync
-Current DC: onmssrv11 (1) - partition with quorum
-Version: 1.1.12-a14efad
-2 Nodes configured
-6 Resources configured
+Current DC: onmssrv01 (version 1.1.13-10.el7_2.2-44eb2dd) - partition with quorum
+2 nodes and 6 resources configured
 
 Online: [ onmssrv01 onmssrv02 ]
 
@@ -305,12 +300,12 @@ Full list of resources:
      onms_etc	(ocf::heartbeat:Filesystem):	Started onmssrv01
      onms_var	(ocf::heartbeat:Filesystem):	Started onmssrv01
      pgpool_etc	(ocf::heartbeat:Filesystem):	Started onmssrv01
-     pgpool_bin	(systemd:pgpool):	Started onmssrv01
+     pgpool_bin	(systemd:pgpool-II-95):	Started onmssrv01
      onms_bin	(systemd:opennms):	Started onmssrv01
 
 PCSD Status:
-  onmssrv11: Online
-  onmssrv12: Online
+  onmssrv01: Online
+  onmssrv02: Online
 
 Daemon Status:
   corosync: active/disabled
@@ -341,34 +336,34 @@ Resources:
   Resource: virtual_ip (class=ocf provider=heartbeat type=IPaddr2)
    Attributes: ip=192.168.205.150 cidr_netmask=32
    Meta Attrs: target-role=Started migration-threshold=1
-   Operations: start interval=0s timeout=20s (virtual_ip-start-timeout-20s)
-               stop interval=0s timeout=20s (virtual_ip-stop-timeout-20s)
+   Operations: start interval=0s timeout=20s (virtual_ip-start-interval-0s)
+               stop interval=0s timeout=20s (virtual_ip-stop-interval-0s)
                monitor interval=30s on-fail=standby (virtual_ip-monitor-interval-30s)
   Resource: onms_etc (class=ocf provider=heartbeat type=Filesystem)
    Attributes: device=nfssrv01:/opt/opennms/etc directory=/opt/opennms/etc fstype=nfs
    Meta Attrs: target-role=Started migration-threshold=1
-   Operations: start interval=0s timeout=60 (onms_etc-start-timeout-60)
-               stop interval=0s timeout=60 (onms_etc-stop-timeout-60)
+   Operations: start interval=0s timeout=60 (onms_etc-start-interval-0s)
+               stop interval=0s timeout=60 (onms_etc-stop-interval-0s)
                monitor interval=30s on-fail=standby (onms_etc-monitor-interval-30s)
   Resource: onms_var (class=ocf provider=heartbeat type=Filesystem)
    Attributes: device=nfssrv01:/opt/opennms/share directory=/var/opennms fstype=nfs
    Meta Attrs: target-role=Started migration-threshold=1
-   Operations: start interval=0s timeout=60 (onms_var-start-timeout-60)
-               stop interval=0s timeout=60 (onms_var-stop-timeout-60)
+   Operations: start interval=0s timeout=60 (onms_var-start-interval-0s)
+               stop interval=0s timeout=60 (onms_var-stop-interval-0s)
                monitor interval=30s on-fail=standby (onms_var-monitor-interval-30s)
   Resource: pgpool_etc (class=ocf provider=heartbeat type=Filesystem)
    Attributes: device=nfssrv01:/opt/opennms/pgpool directory=/etc/pgpool-II-95 fstype=nfs
    Meta Attrs: target-role=Started migration-threshold=1
-   Operations: start interval=0s timeout=60 (pgpool_etc-start-timeout-60)
-               stop interval=0s timeout=60 (pgpool_etc-stop-timeout-60)
+   Operations: start interval=0s timeout=60 (pgpool_etc-start-interval-0s)
+               stop interval=0s timeout=60 (pgpool_etc-stop-interval-0s)
                monitor interval=30s on-fail=standby (pgpool_etc-monitor-interval-30s)
-  Resource: pgpool_bin (class=systemd type=pgpool)
+  Resource: pgpool_bin (class=systemd type=pgpool-II-95)
    Meta Attrs: target-role=Started migration-threshold=1
    Operations: monitor interval=30s on-fail=standby (pgpool_bin-monitor-interval-30s)
   Resource: onms_bin (class=systemd type=opennms)
-   Meta Attrs: target-role=Started migration-threshold=1
-   Operations: start interval=0s timeout=180s (onms_bin-start-timeout-180s)
-               stop interval=0s timeout=180s (onms_bin-stop-timeout-180s)
+   Meta Attrs: migration-threshold=1
+   Operations: start interval=0s timeout=180s (onms_bin-start-interval-0s)
+               stop interval=0s timeout=180s (onms_bin-stop-interval-0s)
                monitor interval=60s on-fail=standby (onms_bin-monitor-interval-60s)
 
 Stonith Devices:
@@ -378,10 +373,15 @@ Location Constraints:
 Ordering Constraints:
 Colocation Constraints:
 
+Resources Defaults:
+ No defaults set
+Operations Defaults:
+ No defaults set
+
 Cluster Properties:
  cluster-infrastructure: corosync
  cluster-name: cluster_onms
- dc-version: 1.1.12-a14efad
+ dc-version: 1.1.13-10.el7_2.2-44eb2dd
  have-watchdog: false
  no-quorum-policy: ignore
  stonith-enabled: false
@@ -546,16 +546,3 @@ To start the cluster services on a given node:
 onmssrv02: Starting Cluster (pacemaker)...
 onmssrv02: Starting Cluster (corosync)...
 ----
-
-=== Pending
-
-If you remember how the cluster was configured with _CMAN/Rgmanager_, you can infer that there is one feature that was not implemented with _Pacemaker_.
-
-With _Rgmanager_, we’ve created a failover domain with a `nofailback` property.
-That means, when the primary node dies, the resources will be moved to the secondary node, but they will remain running on that node even if the primary is back to business.
-
-On the other hand, this is not the case with the resources on _Pacemaker_.
-There is a mandatory constraint created automatically when the resource group is created that gives priority to the node on which the group was created, in this case _onmssrv01_.
-That means, if _onmssrv01_ has a problem, when it is back online, all the resources will be moved to this server.
-
-I haven’t found a way to make _Pacemaker_ behaves like _Rgmanager_.

@@ -389,7 +389,7 @@ It is important to tune the initialization scripts properly.
 
 ==== SysV Initialization Scripts (RHEL/CentOS 6)
 
-Edit the file `/etc/init.d/pgpool`, and inside the start function, call the `dbcleanup.sh` script before start _pgpool_.
+Edit the file `/etc/init.d/pgpool-II-95`, and inside the start function, call the `dbcleanup.sh` script before start _pgpool_.
 Here is how the content should look like:
 
 [source, bash]
