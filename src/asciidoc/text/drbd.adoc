@@ -1,0 +1,426 @@
+// Allow GitHub image rendering
+:imagesdir: ../images
+
+== DRBD
+
+=== Replace NFS with DRBD using Pacemaker
+
+Be sure each OpenNMS server has a spare disk to create the filesystem that will be dedicated for DRBD.
+
+For the _Vagrant_ lab, update the _Vagrantfile_ to add an additional disk to the _OpenNMS_ servers:
+
+[source]
+----
+}, {
+  :name => "onmssrv01",
+  :ip   => "192.168.205.151",
+  :mem  => "2048",
+  :cpu  => "1",
+  :disk => "onmssrv01-drbd.vdi"
+}, {
+  :name => "onmssrv02",
+  :ip   => "192.168.205.152",
+  :mem  => "2048",
+  :cpu  => "1",
+  :disk => "onmssrv02-drbd.vdi"
+}
+----
+
+WARNING: If the full path to the `.vdi` files is not specified, the files will be created on the directory where the `Vagrantfile` exists.
+
+Then, execute the following command to reload the changes on the VMs and make the virtual disks available:
+
+[source]
+----
+vagrant reload
+----
+
+Create a linux partition on each _OpenNMS_ Server (remember that the Vagrantfile has a hardcoded size of 2GB for the custom filesystems):
+
+[source]
+----
+[root@onmssrv01 ~]# fdisk /dev/sdb
+Welcome to fdisk (util-linux 2.23.2).
+
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Device does not contain a recognized partition table
+Building a new DOS disklabel with disk identifier 0xe84e4e98.
+
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p): p
+Partition number (1-4, default 1):
+First sector (2048-4194303, default 2048):
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-4194303, default 4194303): +2GB
+Partition 1 of type Linux and of size 1.9 GiB is set
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+----
+
+Install DRBD on both OpenNMS servers:
+
+[source]
+----
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+yum install -y http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+yum install -y kmod-drbd84 drbd84-utils
+----
+
+WARNING: The version of drbd84-utils shipped with CentOS 7.1 has a bug in the Pacemaker integration script. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
+
+[source]
+----
+curl -o /usr/lib/ocf/resource.d/linbit/drbd 'http://git.linbit.com/gitweb.cgi?p=drbd-utils.git;a=blob_plain;f=scripts/drbd.ocf;h=cf6b966341377a993d1bf5f585a5b9fe72eaa5f2;hb=c11ba026bbbbc647b8112543df142f2185cb4b4b'
+----
+
+DRBD will not be able to run under the default SELinux security policies. If you are familiar with SELinux, you can modify the policies in a more fine-grained manner, but here we will simply exempt DRBD processes from SELinux control:
+
+[source]
+----
+yum install -y policycoreutils-python
+semanage permissive -a drbd_t
+----
+
+Configure the firewall:
+
+[source]
+----
+[root@onmssrv01 ~]# firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.205.152" port port="7789" protocol="tcp" accept'
+
+[root@onmssrv02 ~]# firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.205.151" port port="7789" protocol="tcp" accept'
+----
+
+Configure _DRBD_, by putting the following content on `/etc/drbd.d/opennms.res` on each server:
+
+[source]
+----
+include::../files/drbd/opennms.res[]
+----
+
+IMPORTANT: Edit the file to use the hostnames, IP addresses and logical volume paths of your nodes if they differ from the ones used in this guide.
+           It is extremely important to use the FQDN exacly as defined in /etc/hosts or the DNS, otherwise it won't work.
+
+NOTE: In this example, we have only two nodes, and all network traffic is on the same LAN. In production, it is recommended to use a dedicated, isolated network for cluster-related traffic, so the firewall configuration would likely be different; one approach would be to add the dedicated network interfaces to the trusted zone.
+
+Also, make sure the globals are correct in `/etc/drbd.d/global_common.conf` on each server:
+
+[source]
+----
+global {
+  usage-count no;
+}
+common {
+  net {
+    protocol C;
+  }
+}
+----
+
+With the configuration in place, we can now get DRBD running.
+These commands create the local metadata for the DRBD resource, ensure the DRBD kernel module is loaded:
+
+[source]
+----
+modprobe drbd
+----
+
+
+Bring up the DRBD resource. Run them on one node:
+
+[source]
+----
+[root@onmssrv01 ~]# drbdadm create-md opennms
+initializing activity log
+NOT initializing bitmap
+Writing meta data...
+New drbd meta data block successfully created.
+[root@onmssrv01 drbd.d]# drbdadm up opennms
+----
+
+Make `onmssrv01` the primary node:
+
+[source]
+----
+[root@onmssrv01 ~]# drbdadm primary --force opennms
+----
+
+After a while, both servers should be synchronized:
+
+[source]
+----
+[root@onmssrv01 ~]# cat /proc/drbd
+version: 8.4.7-1 (api:1/proto:86-101)
+GIT-hash: 3a6a769340ef93b1ba2792c6461250790795db49 build by phil@Build64R7, 2016-01-12 14:29:40
+
+ 1: cs:Connected ro:Primary/Secondary ds:UpToDate/UpToDate C r-----
+    ns:1952672 nr:0 dw:0 dr:1953584 al:8 bm:0 lo:0 pe:0 ua:0 ap:0 ep:1 wo:f oos:0
+----
+
+[source]
+----
+[root@onmssrv02 ~]# cat /proc/drbd
+version: 8.4.7-1 (api:1/proto:86-101)
+GIT-hash: 3a6a769340ef93b1ba2792c6461250790795db49 build by phil@Build64R7, 2016-01-12 14:29:40
+
+ 1: cs:Connected ro:Secondary/Primary ds:UpToDate/UpToDate C r-----
+    ns:0 nr:1952672 dw:1952672 dr:0 al:8 bm:0 lo:0 pe:0 ua:0 ap:0 ep:1 wo:f oos:0
+----
+
+On the node with the primary role (`onmssrv01` in this example), create a filesystem on the DRBD device:
+
+[source]
+----
+[root@onmssrv01 ~]# mkfs.xfs /dev/drbd1
+meta-data=/dev/drbd1             isize=256    agcount=4, agsize=122042 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=0        finobt=0
+data     =                       bsize=4096   blocks=488168, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=0
+log      =internal log           bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+----
+
+NOTE: In this example, we create an _XFS_ filesystem with no special options. In a production environment, you should choose a filesystem type and options that are suitable for your application.
+
+The device should be mountable at this point.
+
+When we discussed _NFS_, we've configured 3 different file systems:
+
+* One for the OpenNMS configuration (/opt/opennms/etc)
+* One for the PGPool-II configuration (/etc/pgpool-II-95)
+* One for the Metrics Directory (/var/opennms)
+
+For _DRBD_, we're going to create a directory called '/drbd' on which we're going to mount the _DRBD_ filesystem.
+Inside this directory, we're going to create the following directories:
+
+* /drbd/pgpool/etc
+* /drbd/opennms/etc
+* /drbd/opennms/var
+
+To avoid conflicts with the current state of the cluster (if exist), we have to re-create the resource group, as we're going to use it differently.
+For this reason, we should delete the current resource group:
+
+[source]
+----
+[root@onmssrv01 ~]# pcs resource remove onms_app
+Stopping all resources in group: onms_app...
+Deleting Resource - virtual_ip
+Deleting Resource - onms_etc
+Deleting Resource - onms_var
+Deleting Resource - pgpool_etc
+Deleting Resource - pgpool_bin
+Deleting Resource (and group) - onms_bin
+----
+
+Now, the cluster is running but nothing is associated with any given node.
+
+In order to prepare the _DRBD_ file system, we have to mount the NFS filesystems temporarily:
+
+First, we have to re-create the resource group, as we're going to use it differently:
+
+[source]
+----
+[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/etc/ /opt/opennms/etc/
+[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/share/ /var/opennms/
+[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-95/
+----
+
+Then, create the directory structure on the _DRBD_ filesystem:
+
+[source]
+----
+[root@onmssrv01 ~]# mkdir /drbd
+[root@onmssrv01 ~]# mount /dev/drbd1 /drbd/
+[root@onmssrv01 ~]# mkdir -p /drbd/pgpool/etc /drbd/opennms/etc /drbd/opennms/var
+[root@onmssrv01 ~]# rsync -avr --delete /opt/opennms/etc/ /drbd/opennms/etc/
+[root@onmssrv01 ~]# rsync -avr --delete /var/opennms/ /drbd/opennms/var/
+[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-95/ /drbd/pgpool/etc/
+----
+
+Unmount the _NFS_ filesystems:
+
+[source]
+----
+[root@onmssrv01 ~]# umount /opt/opennms/etc/
+[root@onmssrv01 ~]# umount /var/opennms/
+[root@onmssrv01 ~]# umount /etc/pgpool-II-95/
+----
+
+Create symlinks from the target directories to the `/drbd` directories:
+
+[source]
+----
+[root@onmssrv01 ~]# rmdir /opt/opennms/etc
+[root@onmssrv01 ~]# ln -s /drbd/opennms/etc /opt/opennms/etc
+[root@onmssrv01 ~]# rmdir /var/opennms
+[root@onmssrv01 ~]# ln -s /drbd/opennms/var /var/opennms
+[root@onmssrv01 ~]# rmdir /etc/pgpool-II-95
+[root@onmssrv01 ~]# ln -s /drbd/pgpool/etc /etc/pgpool-II-95
+----
+
+NOTE: At this point, if you start _pgpool-II_ and _OpenNMS_, both should be working as expected.
+      After testing _OpenNMS_, stop all the processes and unmount the DRBD filesystem.
+
+On the secondary server (`onmssrv02`), create the directories and make the symbolic links. The links will be invalid as the DRBD is not mounted, but you can safely ignore this.
+
+[source]
+----
+[root@onmssrv02 ~]# mkdir /drbd
+[root@onmssrv02 ~]# rmdir /opt/opennms/etc
+[root@onmssrv02 ~]# ln -s /drbd/opennms/etc /opt/opennms/etc
+[root@onmssrv02 ~]# rmdir /var/opennms
+[root@onmssrv02 ~]# ln -s /drbd/opennms/var /var/opennms
+[root@onmssrv02 ~]# rmdir /etc/pgpool-II-95
+[root@onmssrv02 ~]# ln -s /drbd/pgpool/etc /etc/pgpool-II-95
+----
+
+IMPORTANT: The resource agent should load the DRBD module when needed if it’s not already loaded. If that does not happen, configure your operating system to load the module at boot time. For CentOS 7, you would run this on both nodes:
+
+[source]
+----
+echo drbd >/etc/modules-load.d/drbd.conf
+----
+
+The cluster is now empty and we should create the resources as follow:
+
+* The floating IP Address
+* A DRBD resource
+* A shared filesystem for the DRBD mountpoint
+* The init script for _pgpool-II_
+* The init script for _OpenNMS_
+
+Create the virtual IP is the IP address that which will be contacted to reach the services (the OpenNMS application in our case):
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs resource create virtual_ip ocf:heartbeat:IPaddr2 \
+ip=192.168.205.150 cidr_netmask=32 \
+op monitor interval=30s on-fail=standby \
+--group onms_app meta target-role=Started migration-threshold=1
+----
+
+Create a cluster resource for the DRBD device, and an additional clone resource (i.e. `onms_data_master`) to allow the resource to run on both nodes at the same time.
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs resource create onms_data ocf:linbit:drbd \
+drbd_resource=opennms op monitor interval=30s
+[root@onmssrv01 ~]# pcs resource master onms_data_master onms_data \
+master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 \
+notify=true
+[root@onmssrv01 ~]# pcs resource cleanup onms_data
+----
+
+NOTE: Note that the above resources have not been added to the group `onms_app`.
+
+Here is how it looks so far:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs status
+Cluster name: cluster_onms
+Last updated: Tue Jun 21 14:34:14 2016		Last change: Tue Jun 21 14:33:56 2016 by hacluster via crmd on onmssrv01
+Stack: corosync
+Current DC: onmssrv02 (version 1.1.13-10.el7_2.2-44eb2dd) - partition with quorum
+2 nodes and 3 resources configured
+
+Online: [ onmssrv01 onmssrv02 ]
+
+Full list of resources:
+
+ Resource Group: onms_app
+     virtual_ip	(ocf::heartbeat:IPaddr2):	Started onmssrv01
+ Master/Slave Set: onms_data_master [onms_data]
+     Masters: [ onmssrv01 ]
+     Slaves: [ onmssrv02 ]
+
+PCSD Status:
+  onmssrv01: Online
+  onmssrv02: Online
+
+Daemon Status:
+  corosync: active/disabled
+  pacemaker: active/disabled
+  pcsd: active/enabled
+----
+
+We can see that `onms_data_master` (our DRBD device) is running as master (DRBD’s primary role) on `onmssrv01` and slave (DRBD’s secondary role) on `onmssrv02`.
+
+In addition to defining the filesystem and the rest of the resources, we also need to tell the cluster where they can be located (only on the DRBD Primary) and when they are allowed to start (after the Primary was promoted).
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs constraint colocation add onms_app with onms_data_master INFINITY with-rsc-role=Master
+[root@onmssrv01 ~]# pcs constraint order promote onms_data_master then start onms_app
+Adding onms_data_master onms_app (kind: Mandatory) (Options: first-action=promote then-action=start)
+----
+
+Create the filesystem resource:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs resource create onms_fs Filesystem \
+device="/dev/drbd1" directory="/drbd" fstype="xfs" \
+op monitor interval=30s on-fail=standby \
+--group onms_app meta target-role=Started migration-threshold=1
+----
+
+Finally, we can create the resources for _pgpool-II_ and _OpenNMS_:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool-II-95 \
+op monitor interval=30s on-fail=standby \
+--group onms_app meta target-role="Started" migration-threshold="1"
+
+[root@onmssrv01 ~]# pcs resource create onms_bin systemd:opennms \
+op start timeout=180s \
+op stop timeout=180s \
+op monitor interval=60s on-fail=standby \
+--group onms_app meta target-role="Started" migration-threshold="1"
+----
+
+_OpenNMS_ should be up and running on _onmssrv01_:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs status
+Cluster name: cluster_onms
+Last updated: Tue Jun 21 14:49:42 2016		Last change: Tue Jun 21 14:47:03 2016 by root via cibadmin on onmssrv01
+Stack: corosync
+Current DC: onmssrv02 (version 1.1.13-10.el7_2.2-44eb2dd) - partition with quorum
+2 nodes and 6 resources configured
+
+Online: [ onmssrv01 onmssrv02 ]
+
+Full list of resources:
+
+ Resource Group: onms_app
+     virtual_ip	(ocf::heartbeat:IPaddr2):	Started onmssrv01
+     onms_fs	(ocf::heartbeat:Filesystem):	Started onmssrv01
+     pgpool_bin	(systemd:pgpool-II-95):	Started onmssrv01
+     onms_bin	(systemd:opennms):	Started onmssrv01
+ Master/Slave Set: onms_data_master [onms_data]
+     Masters: [ onmssrv01 ]
+     Slaves: [ onmssrv02 ]
+
+PCSD Status:
+  onmssrv01: Online
+  onmssrv02: Online
+
+Daemon Status:
+  corosync: active/disabled
+  pacemaker: active/disabled
+  pcsd: active/enabled
+----

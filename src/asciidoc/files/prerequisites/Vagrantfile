@@ -32,6 +32,11 @@ boxes = [
 
 Vagrant.configure(2) do |config|
   config.vm.box = "centos/7"
+  config.vm.provider "virtualbox" do |vb|
+    # TODO The following line has to be executed only once.
+    #      For further executions, comment this line.
+    vb.customize ["storagectl", :id, "--name", "SATA Controller", "--add", "sata"]
+  end
   boxes.each do |opts|
     config.vm.define opts[:name] do |config|
       if opts[:box]
@@ -43,7 +48,6 @@ Vagrant.configure(2) do |config|
         v.customize [ "modifyvm", :id, "--cpus", opts[:cpu] ]
         v.customize [ "modifyvm", :id, "--memory", opts[:mem] ]
         if opts[:disk]
-          v.customize ["storagectl", :id, "--name", "SATA Controller", "--add", "sata"]
           unless File.exist?(opts[:disk])
             v.customize [ "createhd", "--filename", opts[:disk], "--size", 2048 ] # WARNING: 2GB Disk
           end
