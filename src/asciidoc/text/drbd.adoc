@@ -3,9 +3,13 @@
 
 == DRBD
 
-=== Replace NFS with DRBD using Pacemaker
+The idea of using _DRBD_ is replace the technology used for the shared resources (i.e. _NFS_) when the solution was initially described.
 
-Be sure each OpenNMS server has a spare disk to create the filesystem that will be dedicated for DRBD.
+On the solution we assumed that the _NFS_ service is highly available. If this is not the case, the solution for OpenNMS is not optimal.
+To avoid this problem, we can use DRBD to have an exact copy of the configuration and collected resources on both _OpenNMS_ servers at all time, even knowing that only one server is up and running at a time.
+
+Of course, in order to use this technologu each OpenNMS server should have a spare disk to create the filesystem that will be dedicated for DRBD.
+The size of this filesystem depends mainly on the amount of JRB/RRD files _OpenNMS_ will be maintaining.
 
 For the _Vagrant_ lab, update the _Vagrantfile_ to add an additional disk to the _OpenNMS_ servers:
 
@@ -35,7 +39,9 @@ Then, execute the following command to reload the changes on the VMs and make th
 vagrant reload
 ----
 
-Create a linux partition on each _OpenNMS_ Server (remember that the Vagrantfile has a hardcoded size of 2GB for the custom filesystems):
+Once the disks are physically attached to the _OpenNMS Servers_, create a linux partition on each of them:
+
+WARNING: Remember that the Vagrantfile has a hardcoded size of 2GB for the custom filesystems.
 
 [source]
 ----
