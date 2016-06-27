@@ -16,6 +16,9 @@ For references purposes, the following machines will used:
 | _pgdbsrv01_ | 192.168.205.153
 | _pgdbsrv02_ | 192.168.205.154
 | _nfssrv01_  | 192.168.205.155
+| _cassandrasrv01_  | 192.168.205.161
+| _cassandrasrv02_  | 192.168.205.162
+| _cassandrasrv03_  | 192.168.205.163
 |===
 
 The virtual IP will be: +
@@ -24,16 +27,26 @@ _onmssrvvip_ : `192.168.205.150`
 
 Static IP addresses must be configured on each machine prior to starting the cluster.
 
+NOTE: The cassandra servers can be used only with Horizon 17 / Meridian 2016 or newer.
+
 === Testing Lab Setup
 
 Ignore this section to use physical servers for this deployment.
 
 Download and install the following tools on a test system:
 
-Vagrant (www.vagrantup.com)
-VirtualBox (www.virtualbox.org)
+* Vagrant (http://www.vagrantup.com)
+* VirtualBox (http://www.virtualbox.org)
 
-The test system must have at least 8 GB of RAM with a quad-core processor.  The test environment will require 5 VMs. Two VMs require 2GB for a total of 7GB.
+Without _Cassandra_:
+
+The test system must have at least 8 GB of RAM with a quad-core processor,
+The test environment will require 5 VMs. Two VMs require 2GB for a total of 7GB of RAM.
+
+With _Cassandra_:
+
+The test system must have around 16GB of RAM with a quad-core processor,
+The test environment will require 7 VMs. Two VMs require 2GB for a total of 9GB of RAM.
 
 Create a directory and inside of it create a file called Vagrantfile, with the following content:
 
@@ -42,7 +55,9 @@ Create a directory and inside of it create a file called Vagrantfile, with the f
 include::../files/prerequisites/Vagrantfile[]
 ----
 
-The above file will setup 5 machines using latest _CentOS 7_.
+NOTE: Remember to add a comment around the Cassandra servers, if you're not going to use them.
+
+The above file will setup 5 machines using latest _CentOS 7_ (when not using _Cassandra_, or 7 otherwise).
 In order to use _CentOS 6_, replace the value of the `config.vm.box` attribute from `centos/7` to `centos/6`.
 To use _CentOS 6_ on some machines and _CentOS 7_ on other machines, add a `:box` attribute on the _JSON_ configuration for the systems using a different OS than the default (the default box is `config.vm.box`).
 
@@ -95,6 +110,9 @@ If _DNS_ is not an option, the `/etc/hosts` should look like the following on ea
 192.168.205.153  pgdbsrv01.local       pgdbsrv01
 192.168.205.154  pgdbsrv02.local       pgdbsrv02
 192.168.205.155  nfssrv01.local        nfssrv01
+192.168.205.161  cassandrasrv01.local  cassandrasrv01
+192.168.205.162  cassandrasrv02.local  cassandrasrv02
+192.168.205.163  cassandrasrv03.local  cassandrasrv03
 ----
 
 Be sure that the domain is properly declared at `/etc/idmapd.conf` for all the hosts, including the _NFS_ server.
@@ -307,6 +325,8 @@ IMPORTANT: By default, the above group is going to install the default cluster s
 
 ==== NFS Packages
 
+NOTE: This applies only if you're planning to use _NFS_ for the shared storage.
+
 On all the servers, make sure the following packages are installed:
 
 * `nfs-utils`
@@ -329,6 +349,41 @@ On _RHEL/CentOS 7_:
 [root@nfssrv01 ~]# systemctl enable nfs-server
 [root@nfssrv01 ~]# systemctl start nfs-server
 ----
+
+==== DRBD Packages
+
+NOTE: This applies only if you're planning to use _DRBD_ for the shared storage.
+
+Install the _DRBD_ packages on both OpenNMS servers:
+
+[source]
+----
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+yum install -y http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
+yum install -y kmod-drbd84 drbd84-utils
+----
+
+WARNING: The version of drbd84-utils shipped with CentOS 7.1 has a bug in the Pacemaker integration script. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
+
+[source]
+----
+curl -o /usr/lib/ocf/resource.d/linbit/drbd 'http://git.linbit.com/gitweb.cgi?p=drbd-utils.git;a=blob_plain;f=scripts/drbd.ocf;h=cf6b966341377a993d1bf5f585a5b9fe72eaa5f2;hb=c11ba026bbbbc647b8112543df142f2185cb4b4b'
+----
+
+_DRBD_ will not be able to run under the default _SELinux_ security policies. If you are familiar with _SELinux_, you can modify the policies in a more fine-grained manner, but here we will simply exempt _DRBD_ processes from _SELinux_ control:
+
+[source]
+----
+yum install -y policycoreutils-python
+semanage permissive -a drbd_t
+----
+
+==== Cassandra Packages
+
+NOTE: This applies only if you're planning to use _Newts_ as the storage technology for the performance metrics.
+      This assumes you're going to use DRBD for the shared configuration.
+
+_COMMING SOON!_
 
 ==== OS Updates
 
@@ -626,8 +681,9 @@ The following are the ports to open on each cluster member (i.e. the _OpenNMS_ m
 | 5404, 5405 | UDP      | corosync/cman (Cluster Manager)
 | 11111      | TCP      | ricci (propagates updated cluster information)
 | 21064      | TCP      | dlm (Distributed Lock Manager)
-| 16851      | TCP      |modclusterd
+| 16851      | TCP      | modclusterd
 | 8084       | TCP      | _Optional_: luci (WebUI to configure the cluster)
+| 7789       | TCP      | _Optional_: DRBD traffic
 |===
 
 On each _OpenNMS_ servers, edit the `/etc/sysconfig/iptables` file and add the following rules before the first `REJECT` entry:
@@ -639,6 +695,7 @@ On each _OpenNMS_ servers, edit the `/etc/sysconfig/iptables` file and add the f
 -A INPUT -p tcp --dport 21064 -j ACCEPT
 -A INPUT -p tcp --dport 16851 -j ACCEPT
 -A INPUT -p tcp --dport 8084 -j ACCEPT
+-A INPUT -p tcp --dport 7789 -j ACCEPT
 
 -A INPUT -p tcp --dport 5817 -j ACCEPT
 -A INPUT -p tcp --dport 8980 -j ACCEPT
@@ -709,6 +766,13 @@ On each of the _OpenNMS_ servers, create a new file called `/etc/firewalld/servi
 include::../files/prerequisites/opennms.xml[]
 ----
 
+Then, create a new file called `/etc/firewalld/services/drbd.xml`, and put the following content inside of it, only if you're planning to use _DRBD_:
+
+[source, xml]
+----
+include::../files/prerequisites/drbd.xml[]
+----
+
 Then, reload firewall configuration:
 
 [source, bash]
@@ -725,13 +789,25 @@ You can use the following command to verify that the new service called _opennms
 RH-Satellite-6 amanda-client bacula bacula-client dhcp dhcpv6 dhcpv6-client dns ftp high-availability http https imaps ipp ipp-client ipsec kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mountd ms-wbt mysql nfs ntp opennms openvpn pmcd pmproxy pmwebapi pmwebapis pop3s postgresql proxy-dhcp radius rpc-bind samba samba-client smtp ssh telnet tftp tftp-client transmission-client vnc-server wbem-https
 ----
 
-Enable the _opennms_ service
+You should also see _drbd_ if that was configured as well.
+
+Enable the _opennms_ service:
 
 [source, bash]
 ----
 [root@onmssrv01 ~]# firewall-cmd --permanent --add-service=opennms
 success
 [root@onmssrv01 ~]# firewall-cmd --add-service=opennms
+success
+----
+
+Enable the _drbd_ service (if applies):
+
+[source, bash]
+----
+[root@onmssrv01 ~]# firewall-cmd --permanent --add-service=drbd
+success
+[root@onmssrv01 ~]# firewall-cmd --add-service=drbd
 success
 ----
 
@@ -782,6 +858,10 @@ success
 [root@nfssrv01 ~]# firewall-cmd --reload
 success
 ----
+
+On the _Cassandra_ servers, ...
+
+_COMMING SOON!_
 
 ==== Syslogd in OpenNMS
 

@@ -3,45 +3,17 @@
 
 == DRBD
 
-The idea of using _DRBD_ is replace the technology used for the shared resources (i.e. _NFS_) when the solution was initially described.
+The idea of using _DRBD_ is replace the technology used for the shared resources (i.e. _NFS_).
 
-On the solution we assumed that the _NFS_ service is highly available. If this is not the case, the solution for OpenNMS is not optimal.
-To avoid this problem, we can use DRBD to have an exact copy of the configuration and collected resources on both _OpenNMS_ servers at all time, even knowing that only one server is up and running at a time.
+On the original solution, it is assumed that the _NFS_ service is highly available. If this is not the case, the solution for OpenNMS is not optimal.
+To avoid this problem, we can use DRBD to have an exact copy of the configuration and the collected resources on both _OpenNMS_ servers at all time, even knowing that only one server is up and running at a time.
 
-Of course, in order to use this technologu each OpenNMS server should have a spare disk to create the filesystem that will be dedicated for DRBD.
+Of course, in order to use this technology each OpenNMS server should have a spare disk to create a filesystem that will be dedicated to DRBD.
 The size of this filesystem depends mainly on the amount of JRB/RRD files _OpenNMS_ will be maintaining.
 
-For the _Vagrant_ lab, update the _Vagrantfile_ to add an additional disk to the _OpenNMS_ servers:
-
-[source]
-----
-}, {
-  :name => "onmssrv01",
-  :ip   => "192.168.205.151",
-  :mem  => "2048",
-  :cpu  => "1",
-  :disk => "onmssrv01-drbd.vdi"
-}, {
-  :name => "onmssrv02",
-  :ip   => "192.168.205.152",
-  :mem  => "2048",
-  :cpu  => "1",
-  :disk => "onmssrv02-drbd.vdi"
-}
-----
-
-WARNING: If the full path to the `.vdi` files is not specified, the files will be created on the directory where the `Vagrantfile` exists.
-
-Then, execute the following command to reload the changes on the VMs and make the virtual disks available:
-
-[source]
-----
-vagrant reload
-----
+NOTE: The Vagrant lab already have a spare disks available for the _OpenNMS Servers_ (2GB is the default size).
 
 Once the disks are physically attached to the _OpenNMS Servers_, create a linux partition on each of them:
-
-WARNING: Remember that the Vagrantfile has a hardcoded size of 2GB for the custom filesystems.
 
 [source]
 ----
@@ -70,39 +42,6 @@ The partition table has been altered!
 
 Calling ioctl() to re-read partition table.
 Syncing disks.
-----
-
-Install DRBD on both OpenNMS servers:
-
-[source]
-----
-rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
-yum install -y http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
-yum install -y kmod-drbd84 drbd84-utils
-----
-
-WARNING: The version of drbd84-utils shipped with CentOS 7.1 has a bug in the Pacemaker integration script. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
-
-[source]
-----
-curl -o /usr/lib/ocf/resource.d/linbit/drbd 'http://git.linbit.com/gitweb.cgi?p=drbd-utils.git;a=blob_plain;f=scripts/drbd.ocf;h=cf6b966341377a993d1bf5f585a5b9fe72eaa5f2;hb=c11ba026bbbbc647b8112543df142f2185cb4b4b'
-----
-
-DRBD will not be able to run under the default SELinux security policies. If you are familiar with SELinux, you can modify the policies in a more fine-grained manner, but here we will simply exempt DRBD processes from SELinux control:
-
-[source]
-----
-yum install -y policycoreutils-python
-semanage permissive -a drbd_t
-----
-
-Configure the firewall:
-
-[source]
-----
-[root@onmssrv01 ~]# firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.205.152" port port="7789" protocol="tcp" accept'
-
-[root@onmssrv02 ~]# firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.205.151" port port="7789" protocol="tcp" accept'
 ----
 
 Configure _DRBD_, by putting the following content on `/etc/drbd.d/opennms.res` on each server:
