@@ -17,7 +17,7 @@ Once the disks are physically attached to the _OpenNMS Servers_, create a linux 
 
 [source]
 ----
-[root@onmssrv01 ~]# fdisk /dev/sdb
+# fdisk /dev/sdb
 Welcome to fdisk (util-linux 2.23.2).
 
 Changes will remain in memory only, until you decide to write them.
@@ -44,7 +44,10 @@ Calling ioctl() to re-read partition table.
 Syncing disks.
 ----
 
-Configure _DRBD_, by putting the following content on `/etc/drbd.d/opennms.res` on each server:
+IMPORTANT: Remember to use the appropriate size for your partition.
+In the above example, 2GB is used according with the configured value on the _Vagrantfile_.
+
+Configure _DRBD_, by putting the following content on `/etc/drbd.d/opennms.res` on each _OpenNMS Server_:
 
 [source]
 ----
@@ -63,32 +66,29 @@ Also, make sure the globals are correct in `/etc/drbd.d/global_common.conf` on e
 global {
   usage-count no;
 }
-common {
-  net {
-    protocol C;
-  }
-}
 ----
 
-With the configuration in place, we can now get DRBD running.
-These commands create the local metadata for the DRBD resource, ensure the DRBD kernel module is loaded:
+With the configuration in place, we can now get _DRBD_ running.
+These commands create the local metadata for the _DRBD_ resource:
+
+Ensure the _DRBD_ kernel module is loaded on both _OpenNMS Servers_:
 
 [source]
 ----
-modprobe drbd
+# modprobe drbd
 ----
 
-
-Bring up the DRBD resource. Run them on one node:
+Bring up the _DRBD_ resource. Run them on both _OpenNMS Servers_:
 
 [source]
 ----
-[root@onmssrv01 ~]# drbdadm create-md opennms
+# drbdadm create-md opennms
 initializing activity log
 NOT initializing bitmap
 Writing meta data...
 New drbd meta data block successfully created.
-[root@onmssrv01 drbd.d]# drbdadm up opennms
+
+# drbdadm up opennms
 ----
 
 Make `onmssrv01` the primary node:
@@ -153,26 +153,39 @@ Inside this directory, we're going to create the following directories:
 * /drbd/opennms/etc
 * /drbd/opennms/var
 
-To avoid conflicts with the current state of the cluster (if exist), we have to re-create the resource group, as we're going to use it differently.
-For this reason, we should delete the current resource group:
+NOTE: This is just one approach to create the required directories.
+It is entirely valid to have 3 different _DRBD_ filesystems, if required.
+Here only one _DRBD_ filesystem is used for simplicity.
+
+WARNING: To avoid conflicts with the current state of the cluster (if exist),
+It is recommended to re-create the whole cluster from scratch:
 
 [source]
 ----
-[root@onmssrv01 ~]# pcs resource remove onms_app
-Stopping all resources in group: onms_app...
-Deleting Resource - virtual_ip
-Deleting Resource - onms_etc
-Deleting Resource - onms_var
-Deleting Resource - pgpool_etc
-Deleting Resource - pgpool_bin
-Deleting Resource (and group) - onms_bin
+[root@onmssrv01 ~]# pcs cluster stop --all
+[root@onmssrv01 ~]# pcs cluster destroy --all
+[root@onmssrv01 ~]# cluster setup --name cluster_onms onmssrv01 onmssrv02
+[root@onmssrv01 ~]# pcs cluster start --all
+[root@onmssrv01 ~]# pcs property set stonith-enabled=false
+[root@onmssrv01 ~]# pcs status
+Cluster name: cluster_onms
+Last updated: Tue Jun 28 11:56:29 2016		Last change: Tue Jun 28 11:56:20 2016 by root via cibadmin on onmssrv01
+Stack: corosync
+Current DC: onmssrv02 (version 1.1.13-10.el7_2.2-44eb2dd) - partition with quorum
+2 nodes and 0 resources configured
+
+Online: [ onmssrv01 onmssrv02 ]
+
+Full list of resources:
+
+PCSD Status:
+  onmssrv01: Online
+  onmssrv02: Online
 ----
 
 Now, the cluster is running but nothing is associated with any given node.
 
-In order to prepare the _DRBD_ file system, we have to mount the NFS filesystems temporarily:
-
-First, we have to re-create the resource group, as we're going to use it differently:
+In order to prepare the _DRBD_ file system, we have to mount the _NFS_ filesystems temporarily on the primary server (i.e. `onmssrv01`):
 
 [source]
 ----
@@ -240,8 +253,8 @@ echo drbd >/etc/modules-load.d/drbd.conf
 The cluster is now empty and we should create the resources as follow:
 
 * The floating IP Address
-* A DRBD resource
-* A shared filesystem for the DRBD mountpoint
+* A _DRBD_ resource
+* A shared filesystem for the _DRBD_ mountpoint
 * The init script for _pgpool-II_
 * The init script for _OpenNMS_
 
@@ -251,7 +264,7 @@ Create the virtual IP is the IP address that which will be contacted to reach th
 ----
 [root@onmssrv01 ~]# pcs resource create virtual_ip ocf:heartbeat:IPaddr2 \
 ip=192.168.205.150 cidr_netmask=32 \
-op monitor interval=30s on-fail=standby \
+op monitor interval=10s on-fail=standby \
 --group onms_app meta target-role=Started migration-threshold=1
 ----
 
@@ -260,7 +273,7 @@ Create a cluster resource for the DRBD device, and an additional clone resource 
 [source, bash]
 ----
 [root@onmssrv01 ~]# pcs resource create onms_data ocf:linbit:drbd \
-drbd_resource=opennms op monitor interval=30s
+drbd_resource=opennms op monitor interval=10s
 [root@onmssrv01 ~]# pcs resource master onms_data_master onms_data \
 master-max=1 master-node-max=1 clone-max=2 clone-node-max=1 \
 notify=true
@@ -293,11 +306,6 @@ Full list of resources:
 PCSD Status:
   onmssrv01: Online
   onmssrv02: Online
-
-Daemon Status:
-  corosync: active/disabled
-  pacemaker: active/disabled
-  pcsd: active/enabled
 ----
 
 We can see that `onms_data_master` (our DRBD device) is running as master (DRBD’s primary role) on `onmssrv01` and slave (DRBD’s secondary role) on `onmssrv02`.
@@ -332,7 +340,7 @@ op monitor interval=30s on-fail=standby \
 [root@onmssrv01 ~]# pcs resource create onms_bin systemd:opennms \
 op start timeout=180s \
 op stop timeout=180s \
-op monitor interval=60s on-fail=standby \
+op monitor interval=60s timeout=180s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 ----
 
@@ -363,9 +371,22 @@ Full list of resources:
 PCSD Status:
   onmssrv01: Online
   onmssrv02: Online
-
-Daemon Status:
-  corosync: active/disabled
-  pacemaker: active/disabled
-  pcsd: active/enabled
 ----
+
+To test the cluster, use the following command:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs cluster standby onmssrv01
+----
+
+After a few seconds, the services should be running on `onmssrv02`.
+
+Once all the resources are up and running on `onmssrv02`, bring back `onmssrv01` to the cluster:
+
+[source, bash]
+----
+[root@onmssrv01 ~]# pcs cluster unstandby onmssrv01
+----
+
+Check `/proc/drbd` on both servers to verify that the role was properly updated.

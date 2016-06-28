@@ -1,7 +1,21 @@
 resource opennms {
+  protocol C;
+  meta-disk internal;
   disk /dev/sdb1;
   device /dev/drbd1;
-  meta-disk internal;
+  handlers {
+    split-brain "/usr/lib/drbd/notify-split-brain.sh root";
+  }
+  net {
+    allow-two-primaries no;
+    after-sb-0pri discard-zero-changes;
+    after-sb-1pri discard-secondary;
+    after-sb-2pri disconnect;
+    rr-conflict disconnect;
+  }
+  disk {
+    on-io-error detach;
+  }
   syncer {
     verify-alg sha1;
   }

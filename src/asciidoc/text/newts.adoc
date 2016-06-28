@@ -3,4 +3,13 @@
 
 == Newts / Cassandra
 
-_COMMING SOON!_
+Starting with _Horizon 17_ and _Meridian 2016_, _OpenNMS_ supports _Newts_ as an alternative backend to storage performance metrics, based on _Apache Cassandra_.
+
+In order to use it, it is required to configure a _Cassandra Cluster_. For production, the minimum cluster size should be 3 nodes with a replication factor of 2 to have maximum availability and redundancy.
+
+In terms of the _OpenNMS Cluster_, you can follow the rules for _DRBD_. Just keep in mind that _DRBD_ will be used only to store configuration, so there is no need to have a huge disk. Probably 128MB should be more than enough in this case.
+
+In general, it is recommended to follow the following guides when tuning the _Cassandra Nodes_:
+
+http://docs.datastax.com/en/landing_page/doc/landing_page/recommendedSettingsLinux.html
+http://docs.datastax.com/en/landing_page/doc/landing_page/planning/planningAntiPatterns.html

@@ -204,67 +204,73 @@ IMPORTANT: Make sure to configure the above repository on `onmssrv01` and `onmss
 
 === RPM Packages Installation
 
-==== Database Packages
+==== Database
 
 The _pgpool-II_ servers (i.e. the _OpenNMS_ servers) are not going to run _PostgreSQL_, but it is recommended to install the `postgresql` packages on these servers.
-For this reason, install the following packages on each of the _pgpoo-II/OpenNMS_ servers:
+For this reason, install the following packages on each of the _pgpool-II/OpenNMS_ servers:
 
-[source, bash]
+[source]
 ----
-yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
+# yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
 ----
 
 On each the database servers, install the packages for _PostgreSQL Server_ and _repmgr_:
 
-[source, bash]
+[source]
 ----
-yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
+# yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
 ----
 
 At this point, the `postgres` user must exist on all the 4 machines.
 Verify with the following command:
 
-[source, bash]
+[source]
 ----
-[root@pgdbsrv01 ~]$ grep postgres /etc/passwd
+# grep postgres /etc/passwd
 postgres:x:26:26:PostgreSQL Server:/var/lib/pgsql:/bin/bash
 ----
 
 The user will be created automatically as part of the installation of the `postgresql95-server` package.
 
-IMPORTANT: Do not make _pgpool-II_ to start with the operating system, because it will be managed by the cluster services.
+WARNING: Do not make _pgpool-II_ to start with the operating system, because it will be managed by the cluster services.
 
-IMPORTANT: Repeat all the above commands on `onmssrv02`
+==== Java
 
-==== OpenNMS Packages
+IMPORTANT: Requires for _OpenNMS_ and _Cassandra_
 
 Starting with _OpenNMS Horizon 16_ and _OpenNMS Meridian 2016_, _OpenNMS_ requires _Oracle JDK 8_.
 For _Meridian 2015_ and older versions of _Horizon_, _Oracle JDK 7_ is required.
 The appropriate _JDK_ will be installed with _OpenNMS_, as they are provided through the _OpenNMS YUM_ repositories.
 Keep in mind that the provided Oracle JDK might not be the latest version, so it is recommended to install it directly from Oracle's web site.
 
-Download and Install Oracle JDK 8:
+Make sure to use the appropriate version for the Oracle JDK you're planning to use from http://java.oracle.com.
+
+For example, to download and Install Oracle JDK 8:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
-[root@onmssrv01 ~]# yum install -y /tmp/jdk-8u91-linux-x64.rpm
+# curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
+# yum install -y /tmp/jdk-8u91-linux-x64.rpm
 ----
 
-Make sure to use the appropriate version for the Oracle JDK you're planning to use from http://java.oracle.com.
+_Apache Cassandra_ also requires Java. It is recommended to download and install the Oracle JDK 8 on all the _Cassandra_ nodes if you're planning to use it.
+
+==== OpenNMS
+
+On each _OpenNMS Server_ install the appropriate packages.
 
 For Horizon:
 
-[source, bash]
+[source]
 ----
-[root@onmssrv01 ~]# yum install opennms-core opennms-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
+# yum install opennms-core opennms-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
 
 For Meridian:
 
-[source, bash]
+[source]
 ----
-[root@onmssrv01 ~]# yum install meridian-core meridian-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
+# yum install meridian-core meridian-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
 
 _Meridian_ provides _RRDtool_ and it is enabled by default.
@@ -272,16 +278,20 @@ _Meridian_ provides _RRDtool_ and it is enabled by default.
 To use _RRDtool_ with _Horizon_, the _OpenNMS_ repository provides the packages as well as the libraries required to use it.
 
 For `Horizon 16` or older:
-[source, bash]
+[source]
 ----
-[root@onmssrv01 ~]# yum install jrrd rrdtool -y
+# yum install jrrd rrdtool -y
 ----
 
 For `Horizon 17` or newer:
 [source, bash]
 ----
-[root@onmssrv01 ~]# yum install jrrd2 rrdtool -y
+# yum install jrrd2 rrdtool -y
 ----
+
+WARNING: Do not make _OpenNMS_ to start with the operating system.  Instead it will be managed by the cluster services.
+
+==== Haveged
 
 It is recommended to install the `haveged` package on all the _OpenNMS_ servers. This service reduces the startup time of the _OpenNMS_ application.
 This package belongs to the EPEL Repository (https://fedoraproject.org/wiki/EPEL).
@@ -290,27 +300,23 @@ Install and enable the EPEL Repository on RHEL/CentOS 6:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm -y
-[root@onmssrv01 ~]# yum install haveged -y
-[root@onmssrv01 ~]# chkconfig haveged on
-[root@onmssrv01 ~]# service haveged start
+# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm -y
+# yum install haveged -y
+# chkconfig haveged on
+# service haveged start
 ----
 
 Install and enable the EPEL Repository on RHEL/CentOS 7:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
-[root@onmssrv01 ~]# yum install haveged -y
-[root@onmssrv01 ~]# systemctl enable haveged
-[root@onmssrv01 ~]# systemctl start haveged
+# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+# yum install haveged -y
+# systemctl enable haveged
+# systemctl start haveged
 ----
 
-IMPORTANT: Do not make _OpenNMS_ to start with the operating system.  Instead it will be managed by the cluster services.
-
-IMPORTANT: Repeat all the above commands on `onmssrv02`
-
-==== RedHat Cluster Packages
+==== RedHat Cluster
 
 The _High Availability YUM group_ must be installed on each cluster member (i.e. the _OpenNMS_ machines):
 
@@ -323,7 +329,7 @@ The _High Availability YUM group_ must be installed on each cluster member (i.e.
 IMPORTANT: By default, the above group is going to install the default cluster services for the selected _Linux_ distribution.
            For _CentOS/RHEL 6_, _CMAN/Ricci_; for _CentOS/RHEL 7_ _Pacemaker_.
 
-==== NFS Packages
+==== NFS
 
 NOTE: This applies only if you're planning to use _NFS_ for the shared storage.
 
@@ -350,7 +356,7 @@ On _RHEL/CentOS 7_:
 [root@nfssrv01 ~]# systemctl start nfs-server
 ----
 
-==== DRBD Packages
+==== DRBD
 
 NOTE: This applies only if you're planning to use _DRBD_ for the shared storage.
 
@@ -378,12 +384,32 @@ yum install -y policycoreutils-python
 semanage permissive -a drbd_t
 ----
 
-==== Cassandra Packages
+WARNING: Do not make drbd_ to start with the operating system, because it will be managed by the cluster services.
+
+==== Cassandra
 
 NOTE: This applies only if you're planning to use _Newts_ as the storage technology for the performance metrics.
       This assumes you're going to use DRBD for the shared configuration.
 
-_COMMING SOON!_
+make sure that Oracle JDK 8 is installed on each _Cassandra Node_.
+
+Configure the _Datastax_ repository, by creating a file at `/etc/yum.repos.d/datastax.repo` with the following content on each _Cassandra Node_:
+
+[source]
+----
+[datastax]
+name = DataStax Repo for Apache Cassandra
+baseurl = http://rpm.datastax.com/community
+enabled = 1
+gpgcheck = 0
+----
+
+Install the  packages on each _Cassandra Node_:
+
+[source]
+----
+# yum install -y cassandra30 cassandra30-tools
+----
 
 ==== OS Updates
 
@@ -628,13 +654,13 @@ IMPORTANT: Repeat the above a similar set of commands from the rest of the serve
 
 ==== RHEL/CentOS 6
 
-The first thing to do is enable and start `iptables` on all servers:
+The first thing to do is enable and start `iptables` on each server:
 
-[source, bash]
+[source]
 ----
-[root@onmssrv01 ~]# /etc/init.d/iptables start
-[root@onmssrv01 ~]# /etc/init.d/iptables save
-[root@onmssrv01 ~]# chkconfig iptables on
+# /etc/init.d/iptables start
+# /etc/init.d/iptables save
+# chkconfig iptables on
 ----
 
 The file `/etc/sysconfig/iptables` should now exist.
@@ -653,7 +679,7 @@ Edit this file on both servers, add the following content before the `COMMIT` in
 The above instructions are the default content for a standard _CentOS 6_ box, so it could be possible that the above lines already exist on that file.
 Using the _Vagrant lab_, _iptables_ is not enabled or configured by default, so the above lines are needed.
 
-Copy `/etc/sysconfig/iptables` from _onmssrv01_ to _onmssrv02_, _pgdbsrv01_ and _pgdbsrv02_.
+Copy `/etc/sysconfig/iptables` to the rest of the servers.
 Then restart the _iptables_ service on all the machines.
 This will ensure that the basic firewall configuration is the same on all servers.
 
@@ -705,46 +731,64 @@ On each _OpenNMS_ servers, edit the `/etc/sysconfig/iptables` file and add the f
 -A INPUT -p udp --dport 162 -j ACCEPT
 ----
 
-On each _PostgreSQL_ servers, open the port _TCP 5432_.
-To do this, edit the `/etc/sysconfig/iptables` file, and add the following rules before the first `REJECT` entry:
+On each _PostgreSQL_ servers, edit the `/etc/sysconfig/iptables` file, and add the following rules before the first `REJECT` entry:
 
 [source]
 ----
 -A INPUT -p tcp --dport 5432 -j ACCEPT
 ----
 
-Repeat the process on the standby _PostgreSQL_ server (_pgdbsrv02_).
-
-On the _NFS_ server, open the port _TCP 2049_.
-To do this, edit the `/etc/sysconfig/iptables` file, and add the following rules before the first `REJECT` entry:
+On the _NFS_ server, edit the `/etc/sysconfig/iptables` file, and add the following rules before the first `REJECT` entry:
 
 [source]
 ----
 -A INPUT -p tcp --dport 2049 -j ACCEPT
 ----
 
+On each _Cassandra Node_, several ports have to be opened:
+
+.Opened ports for Cassandra
+[option="header, autowidth"]
+|===
+| Port  | Protocol | Description
+| 7199  | TCP      | JMX (was 8080 pre Cassandra 0.8.xx)
+| 7000  | TCP      | Internode communication (not used if TLS enabled)
+| 7001  | TCP      | TLS Internode communication (used if TLS enabled)
+| 9160  | TCP      | hrift client API
+| 9042  | TCP      | CQL native transport port
+|===
+
+To do this, edit the `/etc/sysconfig/iptables` file on each _Cassandra Node_, and add the following rules before the first `REJECT` entry:
+
+[source]
+----
+-A INPUT -p tcp --dport 7199 -j ACCEPT
+-A INPUT -p tcp --dport 7000 -j ACCEPT
+-A INPUT -p tcp --dport 7001 -j ACCEPT
+-A INPUT -p tcp --dport 9160 -j ACCEPT
+-A INPUT -p tcp --dport 9042 -j ACCEPT
+----
+
 Finally, restart _iptables_ on all the servers:
 
-[source, bash]
+[source]
 ----
-[root@onmssrv01 ~]# service iptables restart
-[root@onmssrv02 ~]# service iptables restart
-[root@pgdbsrv01 ~]# service iptables restart
-[root@pgdbsrv02 ~]# service iptables restart
-[root@nfssrv01 ~]# service iptables restart
+# service iptables restart
 ----
 
 ==== RHEL/CentOS 7
 
-The first thing to do is enable and start `firewalld` on all servers:
+The first thing to do is enable and start `firewalld` on each server:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# systemctl enable firewalld
+# systemctl enable firewalld
 ln -s '/usr/lib/systemd/system/firewalld.service' '/etc/systemd/system/dbus-org.fedoraproject.FirewallD1.service'
 ln -s '/usr/lib/systemd/system/firewalld.service' '/etc/systemd/system/basic.target.wants/firewalld.service'
-[root@onmssrv01 ~]# systemctl start firewalld
-[root@onmssrv01 ~]# systemctl status firewalld
+
+# systemctl start firewalld
+
+# systemctl status firewalld
 firewalld.service - firewalld - dynamic firewall daemon
    Loaded: loaded (/usr/lib/systemd/system/firewalld.service; enabled)
    Active: active (running) since Thu 2015-07-16 18:55:59 UTC; 4s ago
@@ -756,8 +800,6 @@ Jul 16 18:55:59 testsrv.local systemd[1]: Started firewalld - dynamic firewall d
 ----
 
 All firewall changes must be executed against _firewalld_ using `firewall-cmd` and not through _iptables_.
-
-Repeat the above commands on the rest of the servers: _onmssrv02_, _pgdbsrv01_, _pgdbsrv02_ and _nfssrv01_.
 
 On each of the _OpenNMS_ servers, create a new file called `/etc/firewalld/services/opennms.xml`, and put the following content inside of it:
 
@@ -773,11 +815,11 @@ Then, create a new file called `/etc/firewalld/services/drbd.xml`, and put the f
 include::../files/prerequisites/drbd.xml[]
 ----
 
-Then, reload firewall configuration:
+Then, reload firewall configuration on each _OpenNMS Server_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# firewall-cmd --reload
+# firewall-cmd --reload
 success
 ----
 
@@ -785,83 +827,102 @@ You can use the following command to verify that the new service called _opennms
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# firewall-cmd --get-services
+# firewall-cmd --get-services
 RH-Satellite-6 amanda-client bacula bacula-client dhcp dhcpv6 dhcpv6-client dns ftp high-availability http https imaps ipp ipp-client ipsec kerberos kpasswd ldap ldaps libvirt libvirt-tls mdns mountd ms-wbt mysql nfs ntp opennms openvpn pmcd pmproxy pmwebapi pmwebapis pop3s postgresql proxy-dhcp radius rpc-bind samba samba-client smtp ssh telnet tftp tftp-client transmission-client vnc-server wbem-https
 ----
 
-You should also see _drbd_ if that was configured as well.
+You should also see _drbd_ if it has been configured as well.
 
-Enable the _opennms_ service:
-
-[source, bash]
-----
-[root@onmssrv01 ~]# firewall-cmd --permanent --add-service=opennms
-success
-[root@onmssrv01 ~]# firewall-cmd --add-service=opennms
-success
-----
-
-Enable the _drbd_ service (if applies):
+On each _OpenNMS Server_, enable the rules for the _opennms_ service:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# firewall-cmd --permanent --add-service=drbd
+# firewall-cmd --permanent --add-service=opennms
 success
-[root@onmssrv01 ~]# firewall-cmd --add-service=drbd
+# firewall-cmd --add-service=opennms
+success
+----
+
+If apply, then enable the rules _drbd_ service:
+
+[source, bash]
+----
+# firewall-cmd --permanent --add-service=drbd
+success
+# firewall-cmd --add-service=drbd
 success
 ----
 
 _RHEL 7_ uses _Pacemaker_ for managing the cluster.
 There is already a service group for high availability applications that includes _Pacemaker_ ports.
-To enable it on _firewalld_:
+To enable it on _firewalld_, do the following on each _OpenNMS Server_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# firewall-cmd --permanent --add-service=high-availability
+# firewall-cmd --permanent --add-service=high-availability
 success
-[root@onmssrv01 ~]# firewall-cmd --add-service=high-availability
+# firewall-cmd --add-service=high-availability
 success
 ----
 
-Then, reload the firewall configuration
+Then, reload the firewall configuration on each _OpenNMS Server_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# firewall-cmd --reload
+# firewall-cmd --reload
 success
 ----
 
-IMPORTANT: Repeat all the process on the standby _OpenNMS_ server (_onmssrv02_).
-
-On each of the _PostgreSQL_ servers, execute the following commands:
+On each _PostgreSQL Server_, execute the following commands:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# firewall-cmd --permanent --add-service=postgresql
+# firewall-cmd --permanent --add-service=postgresql
 success
-[root@pgdbsrv01 ~]# firewall-cmd --add-service=postgresql
+# firewall-cmd --add-service=postgresql
 success
-[root@pgdbsrv01 ~]# firewall-cmd --reload
+# firewall-cmd --reload
 success
 ----
-
-IMPORTANT: Repeat the process on the standby _PostgreSQL_ server (_pgdbsrv02_).
 
 On the _NFS_ server, execute the following commands:
 
 [source, bash]
 ----
-[root@nfssrv01 ~]# firewall-cmd --permanent --add-service=nfs
+# firewall-cmd --permanent --add-service=nfs
 success
-[root@nfssrv01 ~]# firewall-cmd --add-service=nfs
+# firewall-cmd --add-service=nfs
 success
-[root@nfssrv01 ~]# firewall-cmd --reload
+# firewall-cmd --reload
 success
 ----
 
-On the _Cassandra_ servers, ...
+On the _Cassandra_ servers, create a new file called `/etc/firewalld/services/cassandra.xml`, and put the following content inside of it, only if you're planning to use _Cassandra_:
 
-_COMMING SOON!_
+[source, xml]
+----
+include::../files/prerequisites/cassandra.xml[]
+----
+
+Then, reload firewall configuration:
+
+[source, bash]
+----
+# firewall-cmd --reload
+success
+----
+
+Then, enable the rules for the _cassandra_ service:
+
+[source, bash]
+----
+# firewall-cmd --permanent --add-service=cassandra
+success
+# firewall-cmd --add-service=cassandra
+success
+# firewall-cmd --reload
+success
+----
 
 ==== Syslogd in OpenNMS
 
@@ -878,7 +939,7 @@ If `opennms.xml` is updated, or another firewall rule _XML_ file is created, the
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# firewall-cmd --reload
+[# firewall-cmd --reload
 success
 ----
 

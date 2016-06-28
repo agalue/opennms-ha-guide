@@ -263,11 +263,11 @@ op monitor interval=30s on-fail=standby \
 [root@onmssrv01 ~]# pcs resource create onms_bin systemd:opennms \
 op start timeout=180s \
 op stop timeout=180s \
-op monitor interval=60s on-fail=standby \
+op monitor interval=60s timeout=180s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 ----
 
-The value for the start timeout for the _opennms_ resource, must be consistent with the value configured on `/opt/opennms/etc/opennms.conf` for `START_TIMEOUT`, and also with the value configured on `/lib/systemd/system/opennms.service` for `TimeoutStartSec`.
+The timeout values for the _opennms_ resource, must be consistent with the value configured on `/opt/opennms/etc/opennms.conf` for `START_TIMEOUT`, and also with the value configured on `/lib/systemd/system/opennms.service` for `TimeoutStartSec`.
 
 WARNING: In general, it is advised to modify /opt/opennms/bin to use a more reliable way to verify if OpenNMS is up and running, as if there is a memory issue, or OpenNMS is frozen, "systemctl status opennms" might become unresponsive and could have bad side effects on the cluster. One way to deal with that is using `curl` to check the amount of alarms through the ReST API. If it returns a number, OpenNMS is alive, otherwise (including the timeout), OpenNMS should be considered unresponsive.
 

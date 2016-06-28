@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <short>cassandra</short>
+  <description>Apache Cassandra</description>
+  <port protocol="tcp" port="7199"/>
+  <port protocol="tcp" port="7000"/>
+  <port protocol="tcp" port="7001"/>
+  <port protocol="tcp" port="9160"/>
+  <port protocol="tcp" port="9042"/>
+</service>
