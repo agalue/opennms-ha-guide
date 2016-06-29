@@ -34,15 +34,15 @@ Initialized empty Git repository in /opt/opennms/etc/.git/
 
 Remember to replace X.Y.Z with the proper version of _OpenNMS_, for example _Horizon 16.0.2_ or _Meridian 2015.1.0_, etc.
 
-Keep in mind that initializing the repository must be done only on _onmssrv01_, as the configuration directory will be moved to a shared _NFS_ server when it is ready.
+Keep in mind that initializing the repository must be done only on _onmssrv01_, as the configuration directory will be managed by the shared storage (i.e. either _NFS_ or _DRBD_, depending on the selected architecture).
 
-Now, every time you change a file and verify the change works, commit the change to the local _Git_ repository.
+NOTE: Every time you change a file and verify the change works, commit the change to the local _Git_ repository.
 
 === Basic Configuration
 
-==== log4j.xml (Meridian)
+==== log4j.xml
 
-In _Meridian 2015.0.1_, the default root level and the _defaultThreshold_ are configured to be _WARN_.
+In _Meridian 2015_, the default root level and the _defaultThreshold_ are configured to be _WARN_.
 That means, nothing below that will be displayed.
 In order to use _INFO/DEBUG_, be sure the following lines has _DEBUG_:
 
@@ -76,33 +76,16 @@ IMPORTANT: Do not set `START_TIMEOUT` to be `0`, otherwise the cluster won’t w
 
 In case you need more _heap space_, go ahead and change it accordingly to the size of the network you’re going to manage; assuming you’re not using the _Vagrant VMs_.
 
-=== Database
+For Meridian 2016 / Horizon 17 or newer, there are additional recommendations for `opennms.conf`:
 
-Proceed to configure _OpenNMS_ to use _Pgpool-II_ and initialize the _OpenNMS_ database.
-This must be done only from one _OpenNMS_ machine.
-
-The first step is edit the `/opt/opennms/etc/opennms-datasources.xml`, file and make sure the two connections are pointing to the local _pgpool-II_, with the correct port and credentials, for example:
-
-[source, xml]
+[source]
 ----
-[root@onmssrv01 ~]# tail -n 14 /opt/opennms/etc/opennms-datasources.xml
-  <jdbc-data-source name="opennms"
-                    database-name="opennms"
-                    class-name="org.postgresql.Driver"
-                    url="jdbc:postgresql://localhost:9999/opennms"
-                    user-name="opennms"
-                    password="opennms" />
-
-  <jdbc-data-source name="opennms-admin"
-                    database-name="template1"
-                    class-name="org.postgresql.Driver"
-                    url="jdbc:postgresql://localhost:9999/template1"
-                    user-name="postgres"
-                    password="postgres" />
-</data-source-configuration>
+ADDITIONAL_MANAGER_OPTIONS="${ADDITIONAL_MANAGER_OPTIONS} -XX:+UseG1GC -XX:+UseStringDeduplication"
 ----
 
-Then, execute the `runjava` script to tell _OpenNMS_ where the Java _JDK_ is installed:
+=== Configure Java
+
+Execute the `runjava` script to tell _OpenNMS_ where the Java _JDK_ is installed:
 
 [source, bash]
 ----
@@ -129,8 +112,33 @@ java version "1.8.0_91"
 Java(TM) SE Runtime Environment (build 1.8.0_91-b14)
 Java HotSpot(TM) 64-Bit Server VM (build 25.91-b14, mixed mode)
 ----
+=== Database
 
-Finally, initialize the _OpenNMS_ database.
+Proceed to configure _OpenNMS_ to use _pgpool-II_ and initialize the _OpenNMS_ database.
+This must be done only from one _OpenNMS_ machine.
+
+The first step is edit the `/opt/opennms/etc/opennms-datasources.xml`, file and make sure the two connections are pointing to the local _pgpool-II_, with the correct port and credentials, for example:
+
+[source, xml]
+----
+[root@onmssrv01 ~]# tail -n 14 /opt/opennms/etc/opennms-datasources.xml
+  <jdbc-data-source name="opennms"
+                    database-name="opennms"
+                    class-name="org.postgresql.Driver"
+                    url="jdbc:postgresql://localhost:9999/opennms"
+                    user-name="opennms"
+                    password="opennms" />
+
+  <jdbc-data-source name="opennms-admin"
+                    database-name="template1"
+                    class-name="org.postgresql.Driver"
+                    url="jdbc:postgresql://localhost:9999/template1"
+                    user-name="postgres"
+                    password="postgres" />
+</data-source-configuration>
+----
+
+Then, initialize the _OpenNMS_ database.
 Prior doing that, be sure that _pgpool-II_ is running:
 
 On _RHEL/CentOS 6_:
@@ -262,156 +270,9 @@ On _RHEL/CentOS 7_:
 
 IMPORTANT: Do not make _opennms_ or _pgpool_ to start with the machine, as these applications will be controlled by the cluster services, not the operating system.
 
-=== NFS
-
-If you’re using a test _VM_ for the _NFS_ server, make sure the _nfs_ service is installed, configured and activated.
-
-On _RHEL/CentOS 6_:
-
-[source, bash]
-----
-[root@nfssrv01 ~]# yum -y install nfs-utils rsync
-[root@nfssrv01 ~]# chkconfig nfs on
-[root@nfssrv01 ~]# service nfs start
-----
-
-On _RHEL/CentOS 7_:
-
-[source, bash]
-----
-[root@nfssrv01 ~]# yum -y install nfs-utils rsync
-[root@nfssrv01 ~]# systemctl enable rpcbind nfs-server
-[root@nfssrv01 ~]# systemctl start rpcbind nfs-server
-----
-
-We need to prepare the shared devices with the appropriate information and test it before create the cluster.
-
-Create the shared folders:
-
-[source, bash]
-----
-[root@nfssrv01 ~]# mkdir -p /opt/opennms/etc
-[root@nfssrv01 ~]# mkdir -p /opt/opennms/share
-[root@nfssrv01 ~]# mkdir -p /opt/opennms/pgpool
-----
-
-Add the following content to the `/etc/exports` file:
-
-[source, bash]
-----
-/opt/opennms/etc      192.168.205.0/24(rw,sync,no_root_squash)
-/opt/opennms/share    192.168.205.0/24(rw,sync,no_root_squash)
-/opt/opennms/pgpool   192.168.205.0/24(rw,sync,no_root_squash)
-----
-
-The above content is based on the _Vagrant lab_.
-On a real deployment, the networks must be different.
-The above network paths must be accessible from the _OpenNMS_ servers.
-
-As mentioned before, the _postgres_ user must exist on the _NFS_ server:
-
-[source, bash]
-----
-[root@nfssrv01 ~]# mkdir /var/lib/pgsql
-[root@nfssrv01 ~]# groupadd -r -g 26 postgres
-[root@nfssrv01 ~]# useradd -r -u 26 -M -d /var/lib/pgsql -n -g postgres postgres
-[root@nfssrv01 ~]# chown postgres:postgres /var/lib/pgsql/
-----
-
-Also, be sure that the domain for your deployment (in this case `local`) is declared in `/etc/idmapd.conf` on the _NFS_ server and all _NFS_ clients.
-In some cases, it might be required to restart the _NFS_ services on the _NFS_ server, and clear the _idmap_ cache on the clients with `nfsidmap -c`.
-
-After modifying `/etc/exports`, restart the nfs service:
-
-On _RHEL/CentOS 6_:
-
-[source, bash]
-----
-[root@nfssrv01 ~]# service nfs restart
-----
-
-On _RHEL/CentOS 7_:
-
-[source, bash]
-----
-[root@nfssrv01 ~]# systemctl restart rpcbind nfs-server
-----
-
-Make sure that the local copy of `/opt/opennms/etc`, `/var/opennms` and `/etc/pgpool-II-95/` created and configured on `onmssrv01` are synchronized with the _NFS_ server:
-
-[source, bash]
-----
-[root@onmssrv01 ~]# rsync -avr --delete /opt/opennms/etc/ nfssrv01:/opt/opennms/etc/
-[root@onmssrv01 ~]# rsync -avr --delete /var/opennms/ nfssrv01:/opt/opennms/share/
-[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-95/ nfssrv01:/opt/opennms/pgpool/
-----
-
-If you cannot perform the synchronization, check the credentials and the target mount point with the administrators of the _NFS_ server.
-
-Remove all the content from the directories that will be mounted through _NFS_:
-
-[source, bash]
-----
-[root@onmssrv01 ~]# rm -rf /opt/opennms/etc/*
-[root@onmssrv01 ~]# rm -rf /opt/opennms/etc/.git*
-[root@onmssrv01 ~]# rm -rf /var/opennms/*
-[root@onmssrv01 ~]# rm -rf /etc/pgpool-II-95/*
-
-[root@onmssrv02 ~]# rm -rf /opt/opennms/etc/*
-[root@onmssrv02 ~]# rm -rf /var/opennms/*
-[root@onmssrv02 ~]# rm -rf /etc/pgpool-II-95/*
-----
-
-Make sure that the `nfs-utils` package is installed on the _OpenNMS_ servers:
-
-[source, bash]
-----
-[root@onmssrv01 ~]# yum install nfs-utils -y
-[root@onmssrv02 ~]# yum install nfs-utils -y
-----
-
-Mount the filesystems on each server to make sure that works.
-
-[source, bash]
-----
-[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/etc/ /opt/opennms/etc/
-[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/share/ /var/opennms/
-[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-95/
-
-[root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/etc/ /opt/opennms/etc/
-[root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/share/ /var/opennms/
-[root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-95/
-----
-
-IMPORTANT: Make sure that the permissions on `/etc/pgpool-II-95/` are correct.
-           If they are not correct (i.e. like showing nobody instead of _postgres_ as the owner of the files), validate with the _NFS_ administrators why it is not working.
-           Besides the _nobody_ user, you should see the following message on `/var/log/messages`:
-
-[source, bash]
-----
-Jul 16 17:48:04 onmssrv01 nfsidmap[5353]: nss_getpwnam: name 'nobody' does not map into domain 'local'
-----
-
-As a workaround, do not use the cluster resource associated with `/etc/pgpool-II-95/`, and synchronize this directory back to each _OpenNMS_ server, and fix the permissions.
-
-Now, unmount the filesystem on each server, as they will be managed by the cluster.
-
-[source, bash]
-----
-[root@onmssrv01 ~]# umount /opt/opennms/etc/
-[root@onmssrv01 ~]# umount /var/opennms/
-[root@onmssrv01 ~]# umount /etc/pgpool-II-95/
-
-[root@onmssrv02 ~]# umount /opt/opennms/etc/
-[root@onmssrv02 ~]# umount /var/opennms/
-[root@onmssrv02 ~]# umount /etc/pgpool-II-95/
-----
-
-IMPORTANT: Do not declare the external filesystems on `/etc/fstab`, the mount/umount operation of the shared filesystems will be managed through the cluster services, not the operating system.
-
 === Cluster Applications
 
-Do not enable the _opennms_ service or the _pgpool_ service to start with the operating system.
+Do not enable the _opennms_ service or the _pgpool-II_ service to start with the operating system.
 Same restriction applies to all shared mounts.
 
 The reason for this is because these resources will be managed through the cluster, not the operating system.

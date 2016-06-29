@@ -352,8 +352,8 @@ On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@nfssrv01 ~]# systemctl enable nfs-server
-[root@nfssrv01 ~]# systemctl start nfs-server
+[root@nfssrv01 ~]# systemctl enable rpcbind nfs-server
+[root@nfssrv01 ~]# systemctl start rpcbind nfs-server
 ----
 
 ==== DRBD
