@@ -18,10 +18,11 @@
         <asciidoc.output.directory>${basedir}/target/generated-docs</asciidoc.output.directory>
         <asciidoc.images.directory>images</asciidoc.images.directory>
         <!-- Version settings -->
-        <asciidoctorVersion>1.5.2.1</asciidoctorVersion>
-        <asciidoctorjVersion>1.5.2</asciidoctorjVersion>
-        <asciidoctorjPdfVersion>1.5.0-alpha.6</asciidoctorjPdfVersion>
-        <jrubyVersion>9.0.0.0.rc1</jrubyVersion>
+        <asciidoctorVersion>1.5.4</asciidoctorVersion>
+        <asciidoctorjVersion>1.5.4</asciidoctorjVersion>
+        <asciidoctorjPdfVersion>1.5.0-alpha.11</asciidoctorjPdfVersion>
+        <asciidoctorMavenPluginVersion>1.5.3</asciidoctorMavenPluginVersion>
+        <jrubyVersion>9.0.5.0</jrubyVersion>
         <mavenResourceVersion>2.6</mavenResourceVersion>
         <wagonSshVersion>2.9</wagonSshVersion>
         <wagonPluginVersion>1.0</wagonPluginVersion>
@@ -63,7 +64,7 @@
             <plugin>
                 <groupId>org.asciidoctor</groupId>
                 <artifactId>asciidoctor-maven-plugin</artifactId>
-                <version>${asciidoctorVersion}</version>
+                <version>${asciidoctorMavenPluginVersion}</version>
                 <dependencies>
                     <dependency>
                         <groupId>org.asciidoctor</groupId>

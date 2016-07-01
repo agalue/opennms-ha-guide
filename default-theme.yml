@@ -1,31 +1,25 @@
 font:
   catalog:
     NotoSerif:
-      normal: notoserif-regular-latin.ttf
-      bold: notoserif-bold-latin.ttf
-      italic: notoserif-italic-latin.ttf
-      bold_italic: notoserif-bolditalic-latin.ttf
-    # NOTE currently, callout numbers don't work with LiberationMono
-    #LiberationMono:
-    #  normal: liberationmono-regular-latin.ttf
-    #  bold: liberationmono-bold-latin.ttf
-    #  italic: liberationmono-italic-latin.ttf
-    #  bold_italic: liberationmono-bolditalic-latin.ttf
-    Mplus1mn:
+      normal: notoserif-regular-subset.ttf
+      bold: notoserif-bold-subset.ttf
+      italic: notoserif-italic-subset.ttf
+      bold_italic: notoserif-bold_italic-subset.ttf
+    # M+ 1mn supports ASCII and the circled numbers used for conums
+    M+ 1mn:
       normal: mplus1mn-regular-ascii-conums.ttf
       bold: mplus1mn-bold-ascii.ttf
       italic: mplus1mn-italic-ascii.ttf
-      bold_italic: mplus1mn-bolditalic-ascii.ttf
-    Mplus1pMultilingual:
-      normal: mplus1p-regular-multilingual.ttf
-      bold: mplus1p-regular-multilingual.ttf
-      italic: mplus1p-regular-multilingual.ttf
-      bold_italic: mplus1p-regular-multilingual.ttf
-    #FontAwesome:
-    #  normal: fontawesome-regular.ttf
+      bold_italic: mplus1mn-bold_italic-ascii.ttf
+    # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
+    # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
+    M+ 1p Fallback:
+      normal: mplus1p-regular-fallback.ttf
+      bold: mplus1p-regular-fallback.ttf
+      italic: mplus1p-regular-fallback.ttf
+      bold_italic: mplus1p-regular-fallback.ttf
   fallbacks:
-    # NOTE M+ 1p doesn't support all CJK characters, but it at least has some coverage
-    - Mplus1pMultilingual
+    - M+ 1p Fallback
 brand:
   primary_color: 428bca
 page:
@@ -98,7 +92,7 @@ code:
   # LiberationMono carries extra gap below line
   #padding: [10, 10, 7.5, 10]
   #line_height: 1.45
-  font_family: Mplus1mn
+  font_family: $literal_font_family
   font_size: ceil($base_font_size)
   #padding: [$base_font_size, $code_font_size, $base_font_size, $code_font_size]
   padding: $code_font_size
@@ -144,7 +138,7 @@ caption:
   margin_inside: $vertical_rhythm * 0.25
   margin_outside: 0
 conum:
-  font_family: Mplus1mn
+  font_family: $literal_font_family
   font_color: $literal_font_color
   font_size: $code_font_size
 image:
