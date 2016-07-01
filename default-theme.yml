@@ -6,20 +6,20 @@ font:
       italic: notoserif-italic-subset.ttf
       bold_italic: notoserif-bold_italic-subset.ttf
     # M+ 1mn supports ASCII and the circled numbers used for conums
-    M+ 1mn:
+    Mplus1mn:
       normal: mplus1mn-regular-ascii-conums.ttf
       bold: mplus1mn-bold-ascii.ttf
       italic: mplus1mn-italic-ascii.ttf
       bold_italic: mplus1mn-bold_italic-ascii.ttf
     # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
     # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
-    M+ 1p Fallback:
+    Mplus1pFallback:
       normal: mplus1p-regular-fallback.ttf
       bold: mplus1p-regular-fallback.ttf
       italic: mplus1p-regular-fallback.ttf
       bold_italic: mplus1p-regular-fallback.ttf
   fallbacks:
-    - M+ 1p Fallback
+    - Mplus1pFallback
 brand:
   primary_color: 428bca
 page:
@@ -92,7 +92,7 @@ code:
   # LiberationMono carries extra gap below line
   #padding: [10, 10, 7.5, 10]
   #line_height: 1.45
-  font_family: $literal_font_family
+  font_family: Mplus1mn
   font_size: ceil($base_font_size)
   #padding: [$base_font_size, $code_font_size, $base_font_size, $code_font_size]
   padding: $code_font_size
@@ -138,7 +138,7 @@ caption:
   margin_inside: $vertical_rhythm * 0.25
   margin_outside: 0
 conum:
-  font_family: $literal_font_family
+  font_family: Mplus1mn
   font_color: $literal_font_color
   font_size: $code_font_size
 image:
