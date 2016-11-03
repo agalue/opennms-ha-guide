@@ -1,0 +1,107 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+boxes = [
+  # [OPTIONAL] To use Newts/Cassandra for storing Metrics
+  # Comment in case this cluster won't be used
+  {
+    :name => "cassandrasrv01",
+    :ip   => "192.168.205.161",
+    :mem  => "1024",
+    :cpu  => "1",
+    :boot => "cassandra.sh"
+  }, {
+    :name => "cassandrasrv02",
+    :ip   => "192.168.205.162",
+    :mem  => "1024",
+    :cpu  => "1",
+    :boot => "cassandra.sh"
+  }, {
+    :name => "cassandrasrv03",
+    :ip   => "192.168.205.163",
+    :mem  => "1024",
+    :cpu  => "1",
+    :boot => "cassandra.sh"
+  },
+  # [OPTIONAL] To use NFS for storing configuration and/or Metrics
+  # Comment in case this server won't be used
+  {
+    :name => "nfssrv01",
+    :ip   => "192.168.205.155",
+    :mem  => "1024",
+    :cpu  => "1",
+    :boot => "nfs.sh"
+  },
+  # Database Cluster
+  {
+    :name => "pgdbsrv01",
+    :ip   => "192.168.205.153",
+    :mem  => "1024",
+    :cpu  => "1",
+    :boot => "pg-master.sh"
+  }, {
+    :name => "pgdbsrv02",
+    :ip   => "192.168.205.154",
+    :mem  => "1024",
+    :cpu  => "1",
+    :boot => "pg-slave.sh"
+  },
+  # OpenNMS Cluster
+  {
+    :name => "onmssrv01",
+    :ip   => "192.168.205.151",
+    :mem  => "2048",
+    :cpu  => "1",
+    :boot => "onms-1.sh",
+    # Required for DRBD Only
+    :disk_name => "drbd-disk.vdi",
+    :disk_size => "2048"
+  }, {
+    :name => "onmssrv02",
+    :ip   => "192.168.205.152",
+    :mem  => "2048",
+    :cpu  => "1",
+    :boot => "onms-2.sh",
+    # Required for DRBD Only
+    :disk_name => "drbd-disk.vdi",
+    :disk_size => "2048"
+  }
+]
+
+Vagrant.configure(2) do |config|
+  unless File.exist?("./keys/authorized_keys")
+    exec("./keys/generate_keys.sh")
+  end
+  config.vm.box = "centos/7"
+  config.ssh.insert_key = false
+  config.vm.provider "virtualbox" do |vb|
+  end
+  boxes.each do |opts|
+    config.vm.define opts[:name] do |config|
+      if opts[:box]
+          config.vm.box = opts[:box]
+      end
+      config.vm.hostname = opts[:name] + ".local"
+      config.vm.network "private_network", ip: opts[:ip]
+      config.vm.provider "virtualbox" do |vb|
+        vb.name = "opennms-cluster-" + opts[:name]
+        vb.customize [ "modifyvm", :id, "--cpus", opts[:cpu] ]
+        vb.customize [ "modifyvm", :id, "--memory", opts[:mem] ]
+        vb.customize [ "modifyvm", :id, "--usb", "off"]
+        vb.customize [ "modifyvm", :id, "--usbehci", "off"]
+        if opts[:disk_name]
+          line = `VBoxManage list systemproperties | grep "Default machine folder"`
+          vb_machine_folder = line.split(':')[1].strip()
+          second_disk = File.join(vb_machine_folder, vb.name, opts[:disk_name])
+          unless File.exist?(second_disk)
+            vb.customize [ "createhd", "--filename", second_disk, "--format", "VDI", "--size", opts[:disk_size] ]
+          end
+          vb.customize [ "storageattach", :id, "--storagectl", "IDE", "--port", "1", "--device", "1", "--type", "hdd", "--medium", second_disk ]
+        end
+      end
+      config.vm.provision "shell" do |s|
+        s.path = "files/" + opts[:boot]
+      end
+    end
+  end
+end

@@ -1,0 +1,26 @@
+<model-import xmlns="http://xmlns.opennms.org/xsd/config/model-import" date-stamp="2014-02-21T11:44:14.541-05:00" foreign-source="OpenNMS">
+  <node foreign-id="onmssrv01" node-label="onmssrv01">
+    <interface descr="LAN" ip-addr="192.168.205.151" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="onmssrv02" node-label="onmssrv02">
+    <interface descr="LAN" ip-addr="192.168.205.152" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="pgdbsrv01" node-label="pgdbsrv01">
+    <interface descr="LAN" ip-addr="192.168.205.153" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="pgdbsrv02" node-label="pgdbsrv02">
+    <interface descr="LAN" ip-addr="192.168.205.154" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="nfssrv01" node-label="nfssrv01">
+    <interface descr="LAN" ip-addr="192.168.205.155" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="cassandrasrv01" node-label="cassandrasrv01">
+    <interface descr="LAN" ip-addr="192.168.205.161" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="cassandrasrv02" node-label="cassandrasrv02">
+    <interface descr="LAN" ip-addr="192.168.205.162" status="1" snmp-primary="P"/>
+  </node>
+  <node foreign-id="cassandrasrv03" node-label="cassandrasrv03">
+    <interface descr="LAN" ip-addr="192.168.205.163" status="1" snmp-primary="P"/>
+  </node>
+</model-import>
