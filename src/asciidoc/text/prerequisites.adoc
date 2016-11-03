@@ -50,7 +50,7 @@ The test environment will require 7 VMs. Two VMs require 2GB for a total of 9GB 
 
 Create a directory and inside of it create a file called Vagrantfile, with the following content:
 
-[source, yaml]
+[source, ruby]
 ----
 include::../files/prerequisites/Vagrantfile[]
 ----
@@ -87,7 +87,7 @@ To restart all the VMs with Vagrant:
 
 [source, bash]
 ----
-$ vagrant reload
+vagrant reload
 ----
 
 In addition, the internal firewall must be enabled by default.
@@ -105,6 +105,7 @@ If _DNS_ is not an option, the `/etc/hosts` should look like the following on ea
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 
+192.168.205.150  onmssrvvip.local      onmssrvvip
 192.168.205.151  onmssrv01.local       onmssrv01
 192.168.205.152  onmssrv02.local       onmssrv02
 192.168.205.153  pgdbsrv01.local       pgdbsrv01
@@ -120,7 +121,6 @@ In this particular case, the domain is `local`:
 
 [source]
 ----
-[root@nfssrv01]# more /etc/idmapd.conf
 [General]
 #Verbosity = 0
 # The following should be set to the local NFSv4 domain name
@@ -132,8 +132,38 @@ To restart all the VMs with _Vagrant_:
 
 [source, bash]
 ----
-$ vagrant reload
+vagrant reload
 ----
+
+=== Timezone and NTP
+
+Make sure that all servers have the same timezone and the time is synchronized between all of them.
+
+[source]
+----
+rm -f /etc/localtime
+ln -s /usr/share/zoneinfo/EST /etc/localtime
+yum -y install ntp ntpdate
+ntpdate -u pool.ntp.org
+----
+
+For RHEL/CentoOS 6 :
+
+[source]
+----
+chkconfig ntpd on
+service ntpd start
+----
+
+For RHEL/CentoOS 7 :
+
+[source]
+----
+systemctl enable ntpd
+systemctl start ntpd
+----
+
+IMPORTANT: This is mandatory for Cassandra.
 
 === PostgreSQL Repository
 
@@ -157,7 +187,7 @@ yum install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_
 
 For _RHEL/CentOS 6_, replace `rhel-7` with `rhel-6`.
 
-IMPORTANT: Make sure to install the above package on all the servers: `onmssrv01`, `onmssrv02`, `pgdbsrv01` and `pgdbsrv02`.
+IMPORTANT: Make sure to install the above package on the following servers: `onmssrv01`, `onmssrv02`, `pgdbsrv01` and `pgdbsrv02`.
 
 === OpenNMS Repository
 
@@ -198,7 +228,7 @@ gpgkey=http://yum.opennms.org/OPENNMS-GPG-KEY
 
 Replace `username` and `password` with the proper credentials.
 
-This solution has been tested with _OpenNMS Meridian 2015.1.0_.
+Replace the major version with the appropriate one. For the above example, Meridian 2015 will be used. To use a newer version, like Meridian 2016, replace the year on the URL.
 
 IMPORTANT: Make sure to configure the above repository on `onmssrv01` and `onmssrv02`.
 
@@ -211,20 +241,20 @@ For this reason, install the following packages on each of the _pgpool-II/OpenNM
 
 [source]
 ----
-# yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
+yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
 ----
 
 On each the database servers, install the packages for _PostgreSQL Server_ and _repmgr_:
 
 [source]
 ----
-# yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
+yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
 ----
 
 At this point, the `postgres` user must exist on all the 4 machines.
 Verify with the following command:
 
-[source]
+[source, bash]
 ----
 # grep postgres /etc/passwd
 postgres:x:26:26:PostgreSQL Server:/var/lib/pgsql:/bin/bash
@@ -249,8 +279,8 @@ For example, to download and Install Oracle JDK 8:
 
 [source, bash]
 ----
-# curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
-# yum install -y /tmp/jdk-8u91-linux-x64.rpm
+curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
+yum install -y /tmp/jdk-8u91-linux-x64.rpm
 ----
 
 _Apache Cassandra_ also requires Java. It is recommended to download and install the Oracle JDK 8 on all the _Cassandra_ nodes if you're planning to use it.
@@ -263,14 +293,14 @@ For Horizon:
 
 [source]
 ----
-# yum install opennms-core opennms-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
+yum install opennms-core opennms-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
 
 For Meridian:
 
 [source]
 ----
-# yum install meridian-core meridian-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
+yum install meridian-core meridian-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 ----
 
 _Meridian_ provides _RRDtool_ and it is enabled by default.
@@ -278,42 +308,47 @@ _Meridian_ provides _RRDtool_ and it is enabled by default.
 To use _RRDtool_ with _Horizon_, the _OpenNMS_ repository provides the packages as well as the libraries required to use it.
 
 For `Horizon 16` or older:
-[source]
+
+[source, bash]
 ----
-# yum install jrrd rrdtool -y
+yum install jrrd rrdtool -y
 ----
 
 For `Horizon 17` or newer:
+
 [source, bash]
 ----
-# yum install jrrd2 rrdtool -y
+yum install jrrd2 rrdtool -y
 ----
 
 WARNING: Do not make _OpenNMS_ to start with the operating system.  Instead it will be managed by the cluster services.
 
 ==== Haveged
 
-It is recommended to install the `haveged` package on all the _OpenNMS_ servers. This service reduces the startup time of the _OpenNMS_ application.
+It is recommended to install the `haveged` package on all the servers.
+
+This service reduces the startup time of the _OpenNMS_ application.
+
 This package belongs to the EPEL Repository (https://fedoraproject.org/wiki/EPEL).
 
 Install and enable the EPEL Repository on RHEL/CentOS 6:
 
 [source, bash]
 ----
-# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm -y
-# yum install haveged -y
-# chkconfig haveged on
-# service haveged start
+yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm -y
+yum install haveged -y
+chkconfig haveged on
+service haveged start
 ----
 
 Install and enable the EPEL Repository on RHEL/CentOS 7:
 
 [source, bash]
 ----
-# yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
-# yum install haveged -y
-# systemctl enable haveged
-# systemctl start haveged
+yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+yum install haveged -y
+systemctl enable haveged
+systemctl start haveged
 ----
 
 ==== RedHat Cluster
@@ -360,38 +395,49 @@ On _RHEL/CentOS 7_:
 
 NOTE: This applies only if you're planning to use _DRBD_ for the shared storage.
 
-Install the _DRBD_ packages on both OpenNMS servers:
+Install the _DRBD_ packages on both OpenNMS servers.
 
-[source]
+On _RHEL/CentOS 6_:
+
+[source, bash]
+----
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+yum install -y http://www.elrepo.org/elrepo-release-6-6.el6.elrepo.noarch.rpm
+yum install -y kmod-drbd84 drbd84-utils
+----
+
+On _RHEL/CentOS 7_:
+
+[source, bash]
 ----
 rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
 yum install -y http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
 yum install -y kmod-drbd84 drbd84-utils
 ----
 
-WARNING: The version of drbd84-utils shipped with CentOS 7.1 has a bug in the Pacemaker integration script. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
+WARNING: This solution has not been tested on RHEL/CentOS 6. The version of drbd84-utils shipped with RHEL/CentOS 7.1 has a bug in the Pacemaker integration script. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
 
-[source]
+[source, bash]
 ----
 curl -o /usr/lib/ocf/resource.d/linbit/drbd 'http://git.linbit.com/gitweb.cgi?p=drbd-utils.git;a=blob_plain;f=scripts/drbd.ocf;h=cf6b966341377a993d1bf5f585a5b9fe72eaa5f2;hb=c11ba026bbbbc647b8112543df142f2185cb4b4b'
 ----
 
 _DRBD_ will not be able to run under the default _SELinux_ security policies. If you are familiar with _SELinux_, you can modify the policies in a more fine-grained manner, but here we will simply exempt _DRBD_ processes from _SELinux_ control:
 
-[source]
+[source, bash]
 ----
 yum install -y policycoreutils-python
 semanage permissive -a drbd_t
 ----
 
-WARNING: Do not make drbd_ to start with the operating system, because it will be managed by the cluster services.
+WARNING: Do not make _drbd_ to start with the operating system, because it will be managed by the cluster services.
 
 ==== Cassandra
 
 NOTE: This applies only if you're planning to use _Newts_ as the storage technology for the performance metrics.
       This assumes you're going to use DRBD for the shared configuration.
 
-make sure that Oracle JDK 8 is installed on each _Cassandra Node_.
+Make sure that Oracle JDK 8 is installed on each _Cassandra Node_.
 
 Configure the _Datastax_ repository, by creating a file at `/etc/yum.repos.d/datastax.repo` with the following content on each _Cassandra Node_:
 
@@ -406,9 +452,9 @@ gpgcheck = 0
 
 Install the  packages on each _Cassandra Node_:
 
-[source]
+[source, bash]
 ----
-# yum install -y cassandra30 cassandra30-tools
+yum install -y cassandra30 cassandra30-tools
 ----
 
 ==== OS Updates
@@ -425,7 +471,7 @@ For the _Vagrant lab_, use the following command:
 
 [source, bash]
 ----
-$ vagrant reload
+vagrant reload
 ----
 
 === Customization of Initialization Scripts
@@ -446,10 +492,10 @@ WARNING: Update the variables according to your environment.
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# chmod 0700 /usr/local/bin/dbcleanup.sh
+chmod 0700 /usr/local/bin/dbcleanup.sh
 ----
 
-On each _PostgreSQL_ server, create a script called `cleanup.sh` at `/var/lib/psql/9.5/` with the following content:
+On each _PostgreSQL_ server, create a script called `dbcleanup.sh` at `/usr/local/bin` with the following content:
 
 [source, bash]
 ----
@@ -460,11 +506,9 @@ Make sure up update the ownership and the permissions on the file:
 
 [source, bash]
 ----
-[root@pgdbsrv01 ~]# chmod 0700 /var/lib/pgsql/9.5/cleanup.sh
-[root@pgdbsrv01 ~]# chown postgres:postgres /var/lib/pgsql/9.5/cleanup.sh
+chmod 0700 /usr/local/bin/dbcleanup.sh
+chown postgres:postgres /usr/local/bin/dbcleanup.sh
 ----
-
-IMPORTANT: Do not forget to update `onmssrv02` and `pgdbsrv02`.
 
 It is important to tune the initialization scripts properly.
 
@@ -487,7 +531,7 @@ WARNING: Be careful when upgrading the installed packages! The files modified ab
 The _systemd_ initialization script for _pgpool-II_ is not correct and it must be fixed prior start using _pgpool_.
 Edit the `/lib/systemd/system/pgpool-II-95.service` file and make sure the content looks like the following:
 
-[source]
+[source, ini]
 ----
 include::../files/prerequisites/pgpool-II-95.service[]
 ----
@@ -496,9 +540,8 @@ Make sure the permissions on the file are correct:
 
 [source, bash]
 ----
-chmod 06444 /lib/systemd/system/pgpool-II-95.service
+chmod 0644 /lib/systemd/system/pgpool-II-95.service
 ----
-
 
 Edit `/usr/lib/tmpfiles.d/pgpool-II-95.conf` and make sure the content look like the following:
 
@@ -515,9 +558,9 @@ chown postgres:postgres /var/run/pgpool-II-95
 
 It is important to update the default options used by `pgpool` when it initializes.
 These options are defined on `/etc/sysconfig/pgpool-II-95`.
-Be sure they look like the following:
+Be sure its content look like the following:
 
-[source, bash]
+[source]
 ----
 OPTS=" -n --discard-status"
 ----
@@ -528,7 +571,7 @@ In order to avoid potential problems when checking the _OpenNMS_ state, it is be
 Edit the `/usr/lib/systemd/system/opennms.service` file, remove the `-Q` from the `ExecStart` method; add `TimeoutStartSec=0` and replace `postgresql.service` with `pgpool-II-95.service`.
 The content should look like this:
 
-[source, bash]
+[source, ini]
 ----
 include::../files/prerequisites/opennms.service[]
 ----
@@ -546,7 +589,7 @@ WARNING: Be careful when upgrading the installed packages! The files modified ab
 
 === Public Key Authentication
 
-All nodes must connect to each other over _SSH_ without a password prompt for the _postgres_ user.
+All the OpenNMS and PostgreSQL servers must connect to each other over _SSH_ without a password prompt for the _postgres_ user.
 _SSH_ will be used to _rsync_ the data from the primary to the standby, and to initiate a failover from _pgpool-II_ servers.
 Password-less _SSH_ can be achieved with public key authentication.
 
@@ -656,11 +699,11 @@ IMPORTANT: Repeat the above a similar set of commands from the rest of the serve
 
 The first thing to do is enable and start `iptables` on each server:
 
-[source]
+[source, bash]
 ----
-# /etc/init.d/iptables start
-# /etc/init.d/iptables save
-# chkconfig iptables on
+/etc/init.d/iptables start
+/etc/init.d/iptables save
+chkconfig iptables on
 ----
 
 The file `/etc/sysconfig/iptables` should now exist.
@@ -771,9 +814,9 @@ To do this, edit the `/etc/sysconfig/iptables` file on each _Cassandra Node_, an
 
 Finally, restart _iptables_ on all the servers:
 
-[source]
+[source, bash]
 ----
-# service iptables restart
+service iptables restart
 ----
 
 ==== RHEL/CentOS 7
@@ -939,7 +982,7 @@ If `opennms.xml` is updated, or another firewall rule _XML_ file is created, the
 
 [source, bash]
 ----
-[# firewall-cmd --reload
+# firewall-cmd --reload
 success
 ----
 
