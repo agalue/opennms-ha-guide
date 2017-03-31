@@ -415,7 +415,7 @@ yum install -y http://www.elrepo.org/elrepo-release-7.0-2.el7.elrepo.noarch.rpm
 yum install -y kmod-drbd84 drbd84-utils
 ----
 
-WARNING: This solution has not been tested on RHEL/CentOS 6. The version of drbd84-utils shipped with RHEL/CentOS 7.1 has a bug in the Pacemaker integration script. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
+WARNING: This solution has not been tested on RHEL/CentOS 6. The version of `drbd84-utils` shipped with RHEL/CentOS 7.1 has a bug in the Pacemaker integration script`. Until a fix is packaged, download the affected script directly from the upstream, on both nodes:
 
 [source, bash]
 ----

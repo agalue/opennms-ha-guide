@@ -82,7 +82,7 @@ work_mem = 2621kB
 maintenance_work_mem = 128MB
 ----
 
-Warning: The above settings should not be used with the _Vagrant VMs_, as these VMs only have 1GB of _RAM_.
+WARNING: The above settings should not be used with the _Vagrant VMs_, as these VMs only have 1GB of _RAM_.
 That was just an example for a physical server with enough _RAM_.
 Leave the default settings for the _Vagrant VMs_.
 
@@ -90,7 +90,7 @@ IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `max_replication_slots` cannot be used
            In case it is required to use an older version, you should replace `max_replication_slots` with: +
            `wal_keep_segments = 5000`
 
-The reason of using at least _9.4_ with replication slots is precisely because the above setting must be big in 9.3 (or older) to avoid issues with replication, but that forces to have a huge filesystem for /var/lib/pgsql. Either way, with replication slots, a standby server must not be down for a long time, otherwise, this might eat all the disk space allocated for `/var/lib/psql`.
+The reason of using at least _9.4_ with replication slots is precisely because the above setting must be big in 9.3 (or older) to avoid issues with replication, but that forces to have a huge filesystem for `/var/lib/pgsql`. Either way, with replication slots, a standby server must not be down for a long time, otherwise, this might eat all the disk space allocated for `/var/lib/psql`.
 
 By default, the configuration directory for _repmgr_ is located at `/etc/repmgr/9.5/`.
 It is recommended to make a copy of `repmgr.conf` (for documentation purposes), and replace the content of it with the following:
@@ -314,6 +314,8 @@ As the last step in the standby node setup, register the standby in _repmgr_:
 -bash-4.1$ exit
 logout
 ----
+
+WARNING: In intentional failover situations, you can stop the primary first and make sure all its data has been flushed. In a true failure of the primary situation, this will not be possible. Some recent transactions (the ones not yet shipped to the standby) committed on the primary may not be available on the standby that's now promoted to being a primary.
 
 === Test Replication
 
@@ -568,9 +570,11 @@ replication_mode = off
 load_balance_mode = on
 master_slave_mode = on
 master_slave_sub_mode = 'stream'
+sr_check_period = 5
 sr_check_user = 'pgpool'
 sr_check_password = 'pgpool'
-health_check_period = 10
+health_check_period = 5
+health_check_timeout = 0
 health_check_user = 'pgpool'
 health_check_password = 'pgpool'
 failover_command = '/etc/pgpool-II-95/failover.sh %h %H'
