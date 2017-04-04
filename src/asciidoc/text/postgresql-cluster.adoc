@@ -527,6 +527,33 @@ DROP DATABASE
 
 If you check the standby server again, you should see that the test _DB_: is not there, as expected.
 
+=== Monitoring Replication
+
+Check how far off is the Standby from Master.
+
+There are two ways to monitor lag for Standby.
+
+1) Lags in Bytes: For calculating lags in bytes, users can use the `pg_stat_replication` view on the master with the function `pg_xlog_location_diff` function. Below is an example:
+
+[source, sql]
+----
+pg_xlog_location_diff(pg_stat_replication.sent_location, pg_stat_replication.replay_location)
+----
+
+which gives the lag in bytes.
+
+2) Calculating lags in Seconds. The following is SQL, which most people uses to find the lag in seconds:
+
+[source, sql]
+----
+SELECT CASE WHEN pg_last_xlog_receive_location() = pg_last_xlog_replay_location()
+            THEN 0
+            ELSE EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp())
+             END AS log_delay;
+----
+
+Including the above into your repertoire can give you good monitoring for PostgreSQL.
+
 === Setup PGPool-II
 
 The next chapter is to setup _pgpool-II_ in order to distribute queries to the primary and standby, and to make sure that we failover to the standby in case the primary isn’t available anymore.
@@ -567,7 +594,7 @@ pid_file_name = '/var/run/pgpool-II-95/pgpool.pid'
 logdir = '/var/log/pgpool-II-95'
 connection_cache = on
 replication_mode = off
-load_balance_mode = on
+load_balance_mode = on # WARNING: Be careful with this option
 master_slave_mode = on
 master_slave_sub_mode = 'stream'
 sr_check_period = 5
@@ -585,6 +612,10 @@ recovery_password = 'pgpool'
 WARNING: Replace the sample password of the _pgpool_ user accordingly (not required for the _Vagrant lab_).
 
 WARNING: Be sure that `num_init_children` is consistent with the required number of connections in _OpenNMS_ (/opt/opennms/etc/opennms-datasources.xml), and the configured `max_connections` in `postgresql.conf`.
+
+WARNING: Be aware that even if having load balancing enabled sounds useful, this could lead to query cancelations when they are running on the stand-by server.
+         It is advised to have this feature disabled (`load_balance_mode=off`), and invest time improving the performance of the master if necessary.
+         That way the stand-by will be treated just as a backup, for high-availability purposes only.
 
 WARNING: The online recovery feature won’t be used.
 It is recommended that the server administrator manually execute the recovery procedure on the broken _DB_ server, to convert it into a new slave server.
