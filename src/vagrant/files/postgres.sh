@@ -4,9 +4,9 @@ source /vagrant/files/base.sh
 
 # PostgreSQL Packages
 
-if ! rpm -qa | grep -q postgresql95-server; then
-  sudo yum install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-redhat95-9.5-2.noarch.rpm -y
-  sudo yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
+if ! rpm -qa | grep -q postgresql$pg_family-server; then
+  sudo yum install $pg_repo_url -y
+  sudo yum install postgresql$pg_family postgresql$pg_family-server postgresql$pg_family-libs postgresql$pg_family-contrib repmgr$pg_family pgpool-II-$pg_family rsync -y
 fi
 
 # Create DB Cleanup Script

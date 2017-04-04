@@ -4,10 +4,10 @@ source /vagrant/files/base.sh
 
 # PostgreSQL Packages
 
-if ! rpm -qa | grep -q postgresql95-server; then
+if ! rpm -qa | grep -q postgresql$pg_family-server; then
   echo "Installing PostgreSQL ..."
-  sudo yum install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-redhat95-9.5-2.noarch.rpm -y
-  sudo yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
+  sudo yum install $pg_repo_url -y
+  sudo yum install postgresql$pg_family postgresql$pg_family-server postgresql$pg_family-libs pgpool-II-$pg_family rsync -y
 fi
 
 # Copy SSH Keys
@@ -21,8 +21,8 @@ setup_java
 # Install OpenNMS
 
 if ! rpm -qa | grep -q opennms-core; then
-  echo "Installing OpenNMS ..."
-  sudo yum install http://yum.opennms.org/repofiles/opennms-repo-stable-rhel7.noarch.rpm -y
+  echo "Installing OpenNMS from $onms_branch..."
+  sudo yum install http://yum.opennms.org/repofiles/opennms-repo-$onms_branch-rhel7.noarch.rpm -y
   sudo yum install jicmp jicmp6 jrrd2 rrdtool opennms-core opennms-webapp-jetty 'perl(LWP)' 'perl(XML::Twig)' -y
 fi
 
@@ -71,7 +71,7 @@ ONMS_DB="opennms"
  
 date
 echo
-rm -f /tmp/.s.PGSQL.9* /var/log/pgpool-II-95/*
+rm -f /tmp/.s.PGSQL.9* /var/log/pgpool-II-$pg_family/*
 for pgserver in \$DB_SRVS; do
 echo "Cleaning up DB connections on \$pgserver ..."
 su - postgres -c "/usr/bin/ssh -T -l postgres \$pgserver '/usr/local/bin/dbcleanup.sh \$ONMS_DB \$ONMS_SRV'"
@@ -82,7 +82,7 @@ sudo chmod 0700 /usr/local/bin/dbcleanup.sh
 
 # Update PGPool-II Script
 
-sudo cat <<EOF > /lib/systemd/system/pgpool-II-95.service
+sudo cat <<EOF > /lib/systemd/system/pgpool-II-$pg_family.service
 [Unit]
 Description=PGPool-II Middleware Between PostgreSQL Servers And PostgreSQL Database Clients
 After=syslog.target network.target
@@ -91,31 +91,31 @@ After=syslog.target network.target
 User=postgres
 Group=postgres
 PermissionsStartOnly=true
-EnvironmentFile=-/etc/sysconfig/pgpool-II-95
+EnvironmentFile=-/etc/sysconfig/pgpool-II-$pg_family
 ExecStartPre=/usr/local/bin/dbcleanup.sh
-ExecStart=/usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf \$OPTS
-ExecStop=/usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf -m fast stop
+ExecStart=/usr/pgpool-$pg_version/bin/pgpool -f /etc/pgpool-II-$pg_family/pgpool.conf \$OPTS
+ExecStop=/usr/pgpool-$pg_version/bin/pgpool -f /etc/pgpool-II-$pg_family/pgpool.conf -m fast stop
  
 [Install]
 WantedBy=multi-user.target
 EOF
 
-sudo chmod 0644 /lib/systemd/system/pgpool-II-95.service
+sudo chmod 0644 /lib/systemd/system/pgpool-II-$pg_family.service
 
 # Fix PGPool-II Settings and Permissions
 
-sudo echo 'd /var/run/pgpool-II-95 0755 postgres postgres -' > /usr/lib/tmpfiles.d/pgpool-II-95.conf
-sudo echo 'OPTS=" -n --discard-status"' > /etc/sysconfig/pgpool-II-95
-sudo chown postgres:postgres /var/run/pgpool-II-95
+sudo echo "d /var/run/pgpool-II-$pg_family 0755 postgres postgres -" > /usr/lib/tmpfiles.d/pgpool-II-$pg_family.conf
+sudo echo 'OPTS=" -n --discard-status"' > /etc/sysconfig/pgpool-II-$pg_family
+sudo chown postgres:postgres /var/run/pgpool-II-$pg_family
 
 # Update OpenNMS Script
 
 sudo cat <<EOF > /usr/lib/systemd/system/opennms.service
 [Unit]
 Description=OpenNMS server
-Wants=pgpool-II-95.service
+Wants=pgpool-II-$pg_family.service
 Requires=network.target network-online.target
-After=pgpool-II-95.service network.target network-online.target
+After=pgpool-II-$pg_family.service network.target network-online.target
  
 [Service]
 User=root

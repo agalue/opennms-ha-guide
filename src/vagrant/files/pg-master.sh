@@ -4,11 +4,11 @@ source /vagrant/files/postgres.sh
 
 # Initialize Database
 
-if [ ! -f "/var/lib/pgsql/9.5/data/pg_hba.conf" ]; then
+if [ ! -f "$pg_data/data/pg_hba.conf" ]; then
 
-  sudo /usr/pgsql-9.5/bin/postgresql95-setup initdb
+  sudo $pg_home/bin/postgresql$pg_family-setup initdb
 
-  sudo cat <<EOF > /var/lib/pgsql/9.5/data/pg_hba.conf
+  sudo cat <<EOF > $pg_data/data/pg_hba.conf
 # "local" is for Unix domain socket connections only
 local   all             all                                     peer
 # IP local connections:
@@ -38,64 +38,70 @@ host    all             pgpool          onmssrv01.local         md5
 host    all             pgpool          onmssrv02.local         md5
 EOF
 
-  postgresql_conf=/var/lib/pgsql/9.5/data/postgresql.conf
+  # The following provides the minimum required changes for pgpool-II.
+  # Tuning for production is not included here.
+  replication_slots=3
+  postgresql_conf=$pg_data/data/postgresql.conf
   sudo sed -r -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" $postgresql_conf
   sudo sed -r -i "/default_statistics_target/s/^#//" $postgresql_conf
   sudo sed -r -i "s/#shared_preload_libraries = ''/shared_preload_libraries = 'repmgr_funcs'/" $postgresql_conf
   sudo sed -r -i "s/#wal_level = minimal/wal_level = hot_standby/" $postgresql_conf
+  sudo sed -r -i "s/#max_replication_slots = 0/max_replication_slots = $replication_slots/" $postgresql_conf
+  sudo sed -r -i "s/#max_wal_senders = 0/max_wal_senders = $replication_slots/" $postgresql_conf
   sudo sed -r -i "s/#wal_buffers = -1/wal_buffers = 16MB/" $postgresql_conf
   sudo sed -r -i "s/#checkpoint_completion_target = 0.5/checkpoint_completion_target = 0.7/" $postgresql_conf
-  sudo sed -r -i "s/#archive_mode = off/archive_mode = on/" $postgresql_conf
-  sudo sed -r -i "s/#archive_command = ''/archive_command = 'cd .'/" $postgresql_conf
-  sudo sed -r -i "s/#max_wal_senders = 0/max_wal_senders = 2/" $postgresql_conf
   sudo sed -r -i "s/#wal_sender_timeout = 60s/wal_sender_timeout = 1s/" $postgresql_conf
-  sudo sed -r -i "s/#max_replication_slots = 0/max_replication_slots = 2/" $postgresql_conf
   sudo sed -r -i "s/#hot_standby = off/hot_standby = on/" $postgresql_conf
+
+  # [OPTIONAL] Enable WAL Archiving (not required for streaming replication)
+  #sudo sed -r -i "s/#wal_keep_segments = 0/wal_keep_segments = 32/" $postgresql_conf
+  #sudo sed -r -i "s/#archive_mode = off/archive_mode = on/" $postgresql_conf
+  #sudo sed -r -i "s/#archive_command = ''/archive_command = 'cp %p /path_to/archive/%f'/" $postgresql_conf
 
 fi
 
 # Configure repmgr
 
-sudo cat <<EOF > /etc/repmgr/9.5/repmgr.conf 
+sudo cat <<EOF > /etc/repmgr/$pg_version/repmgr.conf 
 cluster=opennms_cluster
 node=1
 node_name=pgdbsrv01
 conninfo='host=pgdbsrv01 user=repmgr dbname=repmgr'
 use_replication_slots=1 # Only for PostgreSQL 9.4 o newer
 loglevel=INFO
-pg_bindir=/usr/pgsql-9.5/bin/
+pg_bindir=$pg_home/bin/
 pg_basebackup_options='--xlog-method=stream'
 master_response_timeout=30
 reconnect_attempts=3
 reconnect_interval=10
 failover=manual
-promote_command='/usr/pgsql-9.5/bin/repmgr standby promote -f /etc/repmgr/9.5/repmgr.conf'
-follow_command='/usr/pgsql-9.5/bin/repmgr standby follow -f /etc/repmgr/9.5/repmgr.conf'
+promote_command='$pg_home/bin/repmgr standby promote -f /etc/repmgr/$pg_version/repmgr.conf'
+follow_command='$pg_home/bin/repmgr standby follow -f /etc/repmgr/$pg_version/repmgr.conf'
 EOF
 
-sudo chown postgres:postgres /etc/repmgr/9.5/repmgr.conf
+sudo chown postgres:postgres /etc/repmgr/$pg_version/repmgr.conf
 
 # Start PostgreSQL
 
-sudo systemctl enable postgresql-9.5
-sudo systemctl start postgresql-9.5
+sudo systemctl enable postgresql-$pg_version
+sudo systemctl start postgresql-$pg_version
 
 # Configure Roles and Passwords
 
-if [ ! -f "/var/lib/pgsql/9.5/.configured" ]; then
+if [ ! -f "$pg_data/.configured" ]; then
   sudo runuser -l postgres -c "psql -c \"CREATE ROLE pgpool SUPERUSER CREATEDB CREATEROLE INHERIT REPLICATION LOGIN ENCRYPTED PASSWORD '$pgpool_dbpass';\""
   sudo runuser -l postgres -c "psql -c \"CREATE USER repmgr SUPERUSER REPLICATION LOGIN ENCRYPTED PASSWORD '$repmgr_dbpass';\""
   sudo runuser -l postgres -c "psql -c \"CREATE DATABASE repmgr OWNER repmgr;\""
   sudo runuser -l postgres -c "psql -c \"CREATE USER opennms SUPERUSER CREATEDB ENCRYPTED PASSWORD '$opennms_dbpass';\""
   sudo runuser -l postgres -c "psql -c \"ALTER USER postgres WITH ENCRYPTED PASSWORD '$postgres_dbpass';\""
   create_pgpass
-  sudo touch /var/lib/pgsql/9.5/.configured
+  sudo touch $pg_data/.configured
 fi
 
 # Register Master with repmgr
 
-if [ ! -f "/var/lib/pgsql/9.5/.registered" ]; then
-  sudo runuser -l postgres -c "/usr/pgsql-9.5/bin/repmgr -f /etc/repmgr/9.5/repmgr.conf --verbose master register"
-  sudo touch /var/lib/pgsql/9.5/.registered
+if [ ! -f "$pg_data/.registered" ]; then
+  sudo runuser -l postgres -c "$pg_home/bin/repmgr -f /etc/repmgr/$pg_version/repmgr.conf --verbose master register"
+  sudo touch $pg_data/.registered
 fi
 

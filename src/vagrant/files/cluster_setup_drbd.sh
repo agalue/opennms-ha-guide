@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source /vagrant/files/base.sh
+
 echo "Cluster Setup - Topology 2"
 echo
 echo "* 2 PostgreSQL Servers behind PGPool-II with repmgr"
@@ -40,7 +42,7 @@ sudo pcs -f ~/onms-cluster.cfg resource create opennms_fs Filesystem \
 
 echo "Creating pgpool-II"
 
-sudo pcs -f ~/onms-cluster.cfg resource create pgpoolII_bin systemd:pgpool-II-95 \
+sudo pcs -f ~/onms-cluster.cfg resource create pgpoolII_bin systemd:pgpool-II-$pg_family \
   op monitor interval=30s on-fail=standby \
   --group onms_app \
   meta target-role="Started" migration-threshold=1

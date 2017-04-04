@@ -2,6 +2,10 @@
 
 source /vagrant/files/base.sh
 
+# Disable Swap
+
+sudo swapoff -a
+
 # Install Java
 
 setup_java
@@ -18,7 +22,7 @@ EOF
 
 if ! rpm -qa | grep -q cassandra30; then
   echo "Installing Cassandra ..."
-  sudo yum install -y cassandra30 cassandra30-tools
+  sudo yum install -y pytz cassandra30 cassandra30-tools
 fi
 
 # Configure Firewall

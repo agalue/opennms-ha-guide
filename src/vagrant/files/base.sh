@@ -102,13 +102,12 @@ systemctl start snmpd
 # Java
 
 function setup_java {
-  if [ ! -f "/tmp/jdk-$java_version-linux-x64.rpm" ]; then
-    echo "Downloading Java $java_version..."
-    sudo wget --quiet --no-verbose --no-cookies --no-check-certificate --header "Cookie: oraclelicense=accept-securebackup-cookie" \
-      "http://download.oracle.com/otn-pub/java/jdk/$java_version-b$java_build/jdk-$java_version-linux-x64.rpm" \
-      -O /tmp/jdk-$java_version-linux-x64.rpm 2>&1 >/dev/null
-    echo "Installing Java $java_version..."
-    sudo yum install -y /tmp/jdk-$java_version-linux-x64.rpm
+  if [ ! -f "/tmp/jdk-linux-x64.rpm" ]; then
+    echo "Downloading Java ..."
+    sudo wget --quiet --no-verbose --no-cookies --no-check-certificate --header "Cookie: oraclelicense=accept-securebackup-cookie" $java_url \
+      -O /tmp/jdk-linux-x64.rpm 2>&1 >/dev/null
+    echo "Installing Java ..."
+    sudo yum install -y /tmp/jdk-linux-x64.rpm
   fi
 }
 

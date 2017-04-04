@@ -1,0 +1,31 @@
+When upgrading OpenNMS, be sure to have a local copy of the shared configuration.
+Otherwise, you'll see error when updating the RPM packages.
+
+PG Extensions for PGpool-II:
+sudo -u postgres psql template1
+=# CREATE EXTENSION pgpool_recovery;
+=# CREATE EXTENSION pgpool_adm;
+=# \q
+
+Install pgpoolAdmin
+
+We need to improve the SSH-Key generation to include Cassandra for Spark.
+We should create 2 authorized_keys, one for the ONMS+Postgres Servers,
+and another for the ONMS+Cassandra Servers.
+
+Install Scala 2.11 through RPMs on the OpenNMS and Cassandra nodes.
+ http://downloads.lightbend.com/scala/2.11.8/scala-2.11.8.rpm
+Create a user for Spark
+Install the keys for the Spark User
+Dowload and uncompress the Spark binary
+ http://d3kbcqa49mib13.cloudfront.net/spark-2.1.0-bin-hadoop2.7.tgz
+Download the spark-cassandra-connector JAR
+ http://dl.bintray.com/spark-packages/maven/datastax/spark-cassandra-connector/2.0.1-s_2.11/spark-cassandra-connector-2.0.1-s_2.11.jar
+ $SPARK_HOME/bin/spark-shell --packages datastax:spark-cassandra-connector:2.0.1-s_2.11
+Setup the environment variables for the Spark User
+Setup the conf/slaves on the OpenNMS machines (point to /opt/opennms/etc)
+Execute start-all.sh on the active OpenNMS
+
+Note: Spark can be added to the Linux Cluster only if it is going to run
+      streaming applications.
+

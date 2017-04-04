@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source /vagrant/files/base.sh
+
 echo "Cluster Setup - Topology 1"
 echo
 echo "* 2 PostgreSQL Servers behind PGPool-II with repmgr"
@@ -40,11 +42,11 @@ sudo pcs -f ~/onms-cluster.cfg resource create opennms_var ocf:heartbeat:Filesys
   --group onms_app \
   meta target-role="Started" migration-threshold=1
 
-echo "Creating shared filesystems : /etc/pgpool-II-95"
+echo "Creating shared filesystems : /etc/pgpool-II-$pg_family"
 
 sudo pcs -f ~/onms-cluster.cfg resource create pgpoolII_etc ocf:heartbeat:Filesystem \
   device="nfssrv01:/opt/opennms/pgpool" \
-  directory="/etc/pgpool-II-95" \
+  directory="/etc/pgpool-II-$pg_family" \
   fstype="nfs" \
   op monitor interval=30s on-fail=standby \
   --group onms_app \
@@ -52,7 +54,7 @@ sudo pcs -f ~/onms-cluster.cfg resource create pgpoolII_etc ocf:heartbeat:Filesy
 
 echo "Creating pgpool-II"
 
-sudo pcs -f ~/onms-cluster.cfg resource create pgpoolII_bin systemd:pgpool-II-95 \
+sudo pcs -f ~/onms-cluster.cfg resource create pgpoolII_bin systemd:pgpool-II-$pg_family \
   op monitor interval=30s on-fail=standby \
   --group onms_app \
   meta target-role="Started" migration-threshold=1
