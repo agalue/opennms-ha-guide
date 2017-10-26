@@ -172,6 +172,7 @@ Additionally, the supported _PostgreSQL_ version for _RHEL/CentOS 6_ is _8.4_, a
 
 Because this solution required the usage of at least _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, the  _PGDG_ repository needs to be added.
 For this tutorial, we're going to use _PostgreSQL 9.5_ and the provided versions for _repmgr_ and _pgpool-II_ on the _PGDG_ repository for that version of PostgreSQL.
+Newer versions can be used without issues, but if 9.4 will be used, make sure to use at least 9.4.11. Older versions cannot be used with this procedure.
 
 _PGDG_ is a project that maintains _RPM_ builds of _PostgreSQL_ and related components.
 More information and repo-URL’s for _PGDG_ can be found here:

@@ -14,25 +14,25 @@ local   all             all                                     peer
 # IP local connections:
 host    all             all             127.0.0.1/32            ident
 host    all             all             ::1/128                 ident
- 
+
 # OpenNMS Access
 host    opennms         opennms         onmssrv01.local         md5
 host    template1       postgres        onmssrv01.local         md5
 host    opennms         opennms         onmssrv02.local         md5
 host    template1       postgres        onmssrv02.local         md5
- 
+
 # Allow replication connections from localhost, by a user with the
 # replication privilege.
 local   replication     postgres                                peer
 host    replication     postgres        127.0.0.1/32            md5
 host    replication     postgres        ::1/128                 md5
- 
+
 # repmgr Access
 host    repmgr          repmgr          pgdbsrv01.local         md5
 host    replication     repmgr          pgdbsrv01.local         md5
 host    repmgr          repmgr          pgdbsrv02.local         md5
 host    replication     repmgr          pgdbsrv02.local         md5
- 
+
 # pgpool-II Access
 host    all             pgpool          onmssrv01.local         md5
 host    all             pgpool          onmssrv02.local         md5
@@ -45,14 +45,15 @@ EOF
   sudo sed -r -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" $postgresql_conf
   sudo sed -r -i "/default_statistics_target/s/^#//" $postgresql_conf
   sudo sed -r -i "s/#shared_preload_libraries = ''/shared_preload_libraries = 'repmgr_funcs'/" $postgresql_conf
-  sudo sed -r -i "s/#wal_level = minimal/wal_level = hot_standby/" $postgresql_conf
+  sudo sed -r -i "s/#wal_level = minimal/wal_level = 'hot_standby'/" $postgresql_conf
   sudo sed -r -i "s/#max_replication_slots = 0/max_replication_slots = $replication_slots/" $postgresql_conf
   sudo sed -r -i "s/#max_wal_senders = 0/max_wal_senders = $replication_slots/" $postgresql_conf
   sudo sed -r -i "s/#wal_buffers = -1/wal_buffers = 16MB/" $postgresql_conf
   sudo sed -r -i "s/#checkpoint_completion_target = 0.5/checkpoint_completion_target = 0.7/" $postgresql_conf
   sudo sed -r -i "s/#wal_sender_timeout = 60s/wal_sender_timeout = 1s/" $postgresql_conf
+  sudo sed -r -i "s/#log_connections = off/log_connections = on/" $postgresql_conf
+  # In theory, the following line is for the standby server.
   sudo sed -r -i "s/#hot_standby = off/hot_standby = on/" $postgresql_conf
-
   # [OPTIONAL] Enable WAL Archiving (not required for streaming replication)
   #sudo sed -r -i "s/#wal_keep_segments = 0/wal_keep_segments = 32/" $postgresql_conf
   #sudo sed -r -i "s/#archive_mode = off/archive_mode = on/" $postgresql_conf
@@ -62,7 +63,7 @@ fi
 
 # Configure repmgr
 
-sudo cat <<EOF > /etc/repmgr/$pg_version/repmgr.conf 
+sudo cat <<EOF > /etc/repmgr/$pg_version/repmgr.conf
 cluster=opennms_cluster
 node=1
 node_name=pgdbsrv01
@@ -104,4 +105,3 @@ if [ ! -f "$pg_data/.registered" ]; then
   sudo runuser -l postgres -c "$pg_home/bin/repmgr -f /etc/repmgr/$pg_version/repmgr.conf --verbose master register"
   sudo touch $pg_data/.registered
 fi
-

@@ -587,7 +587,7 @@ backend_flag1 = 'ALLOW_TO_FAILOVER'
 enable_pool_hba = on
 pool_passwd = 'pool_passwd'
 authentication_timeout = 60
-num_init_children = 60
+num_init_children = 60 # Should be consistent with max_connections in postgresql.conf
 max_pool = 1
 child_max_connections = 0
 pid_file_name = '/var/run/pgpool-II-95/pgpool.pid'
@@ -614,8 +614,9 @@ WARNING: Replace the sample password of the _pgpool_ user accordingly (not requi
 WARNING: Be sure that `num_init_children` is consistent with the required number of connections in _OpenNMS_ (/opt/opennms/etc/opennms-datasources.xml), and the configured `max_connections` in `postgresql.conf`.
 
 WARNING: Be aware that even if having load balancing enabled sounds useful, this could lead to query cancelations when they are running on the stand-by server.
+         This is due to the fact that the stand-by is slightly behind the primary, and will be eventually consistent (this time difference is the sum of the replication delay plus the apply delay).
          It is advised to have this feature disabled (`load_balance_mode=off`), and invest time improving the performance of the master if necessary.
-         That way the stand-by will be treated just as a backup, for high-availability purposes only.
+         That way the stand-by will be treated just as a backup, for high-availability purposes only, and can be used for reporting capabilities (that doesn't require up to date data).
 
 WARNING: The online recovery feature won’t be used.
 It is recommended that the server administrator manually execute the recovery procedure on the broken _DB_ server, to convert it into a new slave server.

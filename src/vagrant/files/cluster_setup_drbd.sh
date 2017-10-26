@@ -38,7 +38,7 @@ sudo pcs -f ~/onms-cluster.cfg resource create opennms_fs Filesystem \
   device="/dev/drbd1" directory="/drbd" fstype="xfs" \
   op monitor interval=30s on-fail=standby \
   --group onms_app \
-  meta target-role=Started migration-threshold=1
+  meta target-role="Started" migration-threshold=1
 
 echo "Creating pgpool-II"
 

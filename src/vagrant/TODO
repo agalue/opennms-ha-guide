@@ -7,6 +7,8 @@ sudo -u postgres psql template1
 =# CREATE EXTENSION pgpool_adm;
 =# \q
 
+If LoadBalancing won't be used consider pgbouncer for connection polling.
+
 Install pgpoolAdmin
 
 We need to improve the SSH-Key generation to include Cassandra for Spark.
@@ -28,4 +30,3 @@ Execute start-all.sh on the active OpenNMS
 
 Note: Spark can be added to the Linux Cluster only if it is going to run
       streaming applications.
-
