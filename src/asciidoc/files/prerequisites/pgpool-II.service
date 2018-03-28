@@ -6,10 +6,10 @@ After=syslog.target network.target
 User=postgres
 Group=postgres
 PermissionsStartOnly=true
-EnvironmentFile=-/etc/sysconfig/pgpool-II-95
+EnvironmentFile=-/etc/sysconfig/pgpool-II-96
 ExecStartPre=/usr/local/bin/dbcleanup.sh
-ExecStart=/usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf $OPTS
-ExecStop=/usr/pgpool-9.5/bin/pgpool -f /etc/pgpool-II-95/pgpool.conf -m fast stop
+ExecStart=/usr/pgpool-9.6/bin/pgpool -f /etc/pgpool-II-96/pgpool.conf $OPTS
+ExecStop=/usr/pgpool-9.6/bin/pgpool -f /etc/pgpool-II-96/pgpool.conf -m fast stop
 
 [Install]
 WantedBy=multi-user.target

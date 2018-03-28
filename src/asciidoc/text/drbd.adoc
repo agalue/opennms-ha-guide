@@ -104,20 +104,20 @@ After a while, both servers should be synchronized:
 ----
 [root@onmssrv01 ~]# cat /proc/drbd
 version: 8.4.7-1 (api:1/proto:86-101)
-GIT-hash: 3a6a769340ef93b1ba2792c6461250790795db49 build by phil@Build64R7, 2016-01-12 14:29:40
+GIT-hash: 3a6a769340ef93b1ba2792c6461250790796db49 build by phil@Build64R7, 2016-01-12 14:29:40
 
  1: cs:Connected ro:Primary/Secondary ds:UpToDate/UpToDate C r-----
-    ns:1952672 nr:0 dw:0 dr:1953584 al:8 bm:0 lo:0 pe:0 ua:0 ap:0 ep:1 wo:f oos:0
+    ns:1962672 nr:0 dw:0 dr:1963584 al:8 bm:0 lo:0 pe:0 ua:0 ap:0 ep:1 wo:f oos:0
 ----
 
 [source]
 ----
 [root@onmssrv02 ~]# cat /proc/drbd
 version: 8.4.7-1 (api:1/proto:86-101)
-GIT-hash: 3a6a769340ef93b1ba2792c6461250790795db49 build by phil@Build64R7, 2016-01-12 14:29:40
+GIT-hash: 3a6a769340ef93b1ba2792c6461250790796db49 build by phil@Build64R7, 2016-01-12 14:29:40
 
  1: cs:Connected ro:Secondary/Primary ds:UpToDate/UpToDate C r-----
-    ns:0 nr:1952672 dw:1952672 dr:0 al:8 bm:0 lo:0 pe:0 ua:0 ap:0 ep:1 wo:f oos:0
+    ns:0 nr:1962672 dw:1962672 dr:0 al:8 bm:0 lo:0 pe:0 ua:0 ap:0 ep:1 wo:f oos:0
 ----
 
 On the node with the primary role (`onmssrv01` in this example), create a filesystem on the DRBD device:
@@ -143,7 +143,7 @@ The device should be mountable at this point.
 When we discussed _NFS_, we've configured 3 different file systems:
 
 * One for the OpenNMS configuration (/opt/opennms/etc)
-* One for the PGPool-II configuration (/etc/pgpool-II-95)
+* One for the PGPool-II configuration (/etc/pgpool-II-96)
 * One for the Metrics Directory (/var/opennms)
 
 For _DRBD_, we're going to create a directory called '/drbd' on which we're going to mount the _DRBD_ filesystem.
@@ -191,7 +191,7 @@ In order to prepare the _DRBD_ file system, we have to mount the _NFS_ filesyste
 ----
 [root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/etc/ /opt/opennms/etc/
 [root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/share/ /var/opennms/
-[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-95/
+[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-96/
 ----
 
 Then, create the directory structure on the _DRBD_ filesystem:
@@ -203,7 +203,7 @@ Then, create the directory structure on the _DRBD_ filesystem:
 [root@onmssrv01 ~]# mkdir -p /drbd/pgpool/etc /drbd/opennms/etc /drbd/opennms/var
 [root@onmssrv01 ~]# rsync -avr --delete /opt/opennms/etc/ /drbd/opennms/etc/
 [root@onmssrv01 ~]# rsync -avr --delete /var/opennms/ /drbd/opennms/var/
-[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-95/ /drbd/pgpool/etc/
+[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-96/ /drbd/pgpool/etc/
 ----
 
 Unmount the _NFS_ filesystems:
@@ -212,7 +212,7 @@ Unmount the _NFS_ filesystems:
 ----
 [root@onmssrv01 ~]# umount /opt/opennms/etc/
 [root@onmssrv01 ~]# umount /var/opennms/
-[root@onmssrv01 ~]# umount /etc/pgpool-II-95/
+[root@onmssrv01 ~]# umount /etc/pgpool-II-96/
 ----
 
 Create symlinks from the target directories to the `/drbd` directories:
@@ -223,8 +223,8 @@ Create symlinks from the target directories to the `/drbd` directories:
 [root@onmssrv01 ~]# ln -s /drbd/opennms/etc /opt/opennms/etc
 [root@onmssrv01 ~]# rmdir /var/opennms
 [root@onmssrv01 ~]# ln -s /drbd/opennms/var /var/opennms
-[root@onmssrv01 ~]# rmdir /etc/pgpool-II-95
-[root@onmssrv01 ~]# ln -s /drbd/pgpool/etc /etc/pgpool-II-95
+[root@onmssrv01 ~]# rmdir /etc/pgpool-II-96
+[root@onmssrv01 ~]# ln -s /drbd/pgpool/etc /etc/pgpool-II-96
 ----
 
 NOTE: At this point, if you start _pgpool-II_ and _OpenNMS_, both should be working as expected.
@@ -239,8 +239,8 @@ On the secondary server (`onmssrv02`), create the directories and make the symbo
 [root@onmssrv02 ~]# ln -s /drbd/opennms/etc /opt/opennms/etc
 [root@onmssrv02 ~]# rmdir /var/opennms
 [root@onmssrv02 ~]# ln -s /drbd/opennms/var /var/opennms
-[root@onmssrv02 ~]# rmdir /etc/pgpool-II-95
-[root@onmssrv02 ~]# ln -s /drbd/pgpool/etc /etc/pgpool-II-95
+[root@onmssrv02 ~]# rmdir /etc/pgpool-II-96
+[root@onmssrv02 ~]# ln -s /drbd/pgpool/etc /etc/pgpool-II-96
 ----
 
 IMPORTANT: The resource agent should load the DRBD module when needed if it’s not already loaded. If that does not happen, configure your operating system to load the module at boot time. For CentOS 7, you would run this on both nodes:
@@ -333,7 +333,7 @@ Finally, we can create the resources for _pgpool-II_ and _OpenNMS_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool-II-95 \
+[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool-II-96 \
 op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 
@@ -362,7 +362,7 @@ Full list of resources:
  Resource Group: onms_app
      virtual_ip	(ocf::heartbeat:IPaddr2):	Started onmssrv01
      onms_fs	(ocf::heartbeat:Filesystem):	Started onmssrv01
-     pgpool_bin	(systemd:pgpool-II-95):	Started onmssrv01
+     pgpool_bin	(systemd:pgpool-II-96):	Started onmssrv01
      onms_bin	(systemd:opennms):	Started onmssrv01
  Master/Slave Set: onms_data_master [onms_data]
      Masters: [ onmssrv01 ]

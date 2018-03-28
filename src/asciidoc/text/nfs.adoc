@@ -59,13 +59,13 @@ On _RHEL/CentOS 7_:
 [root@nfssrv01 ~]# systemctl restart rpcbind nfs-server
 ----
 
-Make sure that the local copy of `/opt/opennms/etc`, `/var/opennms` and `/etc/pgpool-II-95/` created and configured on `onmssrv01` are synchronized with the _NFS_ server:
+Make sure that the local copy of `/opt/opennms/etc`, `/var/opennms` and `/etc/pgpool-II-96/` created and configured on `onmssrv01` are synchronized with the _NFS_ server:
 
 [source, bash]
 ----
 [root@onmssrv01 ~]# rsync -avr --delete /opt/opennms/etc/ nfssrv01:/opt/opennms/etc/
 [root@onmssrv01 ~]# rsync -avr --delete /var/opennms/ nfssrv01:/opt/opennms/share/
-[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-95/ nfssrv01:/opt/opennms/pgpool/
+[root@onmssrv01 ~]# rsync -avr --delete /etc/pgpool-II-96/ nfssrv01:/opt/opennms/pgpool/
 ----
 
 If you cannot perform the synchronization, check the credentials and the target mount point with the administrators of the _NFS_ server.
@@ -77,11 +77,11 @@ Remove all the content from the directories that will be mounted through _NFS_:
 [root@onmssrv01 ~]# rm -rf /opt/opennms/etc/*
 [root@onmssrv01 ~]# rm -rf /opt/opennms/etc/.git*
 [root@onmssrv01 ~]# rm -rf /var/opennms/*
-[root@onmssrv01 ~]# rm -rf /etc/pgpool-II-95/*
+[root@onmssrv01 ~]# rm -rf /etc/pgpool-II-96/*
 
 [root@onmssrv02 ~]# rm -rf /opt/opennms/etc/*
 [root@onmssrv02 ~]# rm -rf /var/opennms/*
-[root@onmssrv02 ~]# rm -rf /etc/pgpool-II-95/*
+[root@onmssrv02 ~]# rm -rf /etc/pgpool-II-96/*
 ----
 
 Make sure that the `nfs-utils` package is installed on the _OpenNMS_ servers:
@@ -98,14 +98,14 @@ Mount the filesystems on each server to make sure that works.
 ----
 [root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/etc/ /opt/opennms/etc/
 [root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/share/ /var/opennms/
-[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-95/
+[root@onmssrv01 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-96/
 
 [root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/etc/ /opt/opennms/etc/
 [root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/share/ /var/opennms/
-[root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-95/
+[root@onmssrv02 ~]# mount -t nfs -o vers=4 nfssrv01:/opt/opennms/pgpool/ /etc/pgpool-II-96/
 ----
 
-IMPORTANT: Make sure that the permissions on `/etc/pgpool-II-95/` are correct.
+IMPORTANT: Make sure that the permissions on `/etc/pgpool-II-96/` are correct.
            If they are not correct (i.e. like showing nobody instead of _postgres_ as the owner of the files), validate with the _NFS_ administrators why it is not working.
            Besides the _nobody_ user, you should see the following message on `/var/log/messages`:
 
@@ -114,7 +114,7 @@ IMPORTANT: Make sure that the permissions on `/etc/pgpool-II-95/` are correct.
 Jul 16 17:48:04 onmssrv01 nfsidmap[5353]: nss_getpwnam: name 'nobody' does not map into domain 'local'
 ----
 
-As a workaround, do not use the cluster resource associated with `/etc/pgpool-II-95/`, and synchronize this directory back to each _OpenNMS_ server, and fix the permissions.
+As a workaround, do not use the cluster resource associated with `/etc/pgpool-II-96/`, and synchronize this directory back to each _OpenNMS_ server, and fix the permissions.
 
 Now, unmount the filesystem on each server, as they will be managed by the cluster.
 
@@ -122,11 +122,11 @@ Now, unmount the filesystem on each server, as they will be managed by the clust
 ----
 [root@onmssrv01 ~]# umount /opt/opennms/etc/
 [root@onmssrv01 ~]# umount /var/opennms/
-[root@onmssrv01 ~]# umount /etc/pgpool-II-95/
+[root@onmssrv01 ~]# umount /etc/pgpool-II-96/
 
 [root@onmssrv02 ~]# umount /opt/opennms/etc/
 [root@onmssrv02 ~]# umount /var/opennms/
-[root@onmssrv02 ~]# umount /etc/pgpool-II-95/
+[root@onmssrv02 ~]# umount /etc/pgpool-II-96/
 ----
 
 IMPORTANT: Do not declare the external filesystems on `/etc/fstab`, the mount/umount operation of the shared filesystems will be managed through the cluster services, not the operating system.

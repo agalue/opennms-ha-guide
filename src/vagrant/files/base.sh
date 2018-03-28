@@ -47,7 +47,7 @@ fi
 
 if ! rpm -qa | grep -q haveged; then
   echo "Installing haveged ..."
-  sudo yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y && \
+  sudo yum install epel-release -y && \
   sudo yum install haveged -y && \
   sudo systemctl enable haveged && \
   sudo systemctl start haveged
@@ -68,6 +68,9 @@ sudo systemctl start firewalld
 sudo firewall-cmd --permanent --add-interface=eth1
 sudo firewall-cmd --add-interface=eth1
 
+# Adding Firewall rules for SNMP
+
+echo "Enabling Firewall rules for SNMP..."
 sudo cat <<EOF > /etc/firewalld/services/snmp.xml
 <?xml version="1.0" encoding="utf-8"?>
 <service>
@@ -80,9 +83,9 @@ sudo firewall-cmd --reload
 sudo firewall-cmd --permanent --add-service=snmp
 sudo firewall-cmd --add-service=snmp
 
-# SNMP
+# Net-SNMP Daemon
 
-echo "Configuring SNMP ..."
+echo "Configuring SNMP Agent ..."
 sudo cp /etc/snmp/snmpd.conf /etc/snmp/snmpd.conf.original
 sudo cat <<EOF > /etc/snmp/snmpd.conf
 com2sec localUser 192.168.205.0/24 public

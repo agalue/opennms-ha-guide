@@ -171,7 +171,7 @@ The standard _RHEL/CentOS_ repositories do not contain the packages for _pgpool-
 Additionally, the supported _PostgreSQL_ version for _RHEL/CentOS 6_ is _8.4_, and for _RHEL/CentOS 7_ is _9.2_.
 
 Because this solution required the usage of at least _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, the  _PGDG_ repository needs to be added.
-For this tutorial, we're going to use _PostgreSQL 9.5_ and the provided versions for _repmgr_ and _pgpool-II_ on the _PGDG_ repository for that version of PostgreSQL.
+For this tutorial, we're going to use _PostgreSQL 9.6_ and the provided versions for _repmgr_ and _pgpool-II_ on the _PGDG_ repository for that version of PostgreSQL.
 Newer versions can be used without issues, but if 9.4 will be used, make sure to use at least 9.4.11. Older versions cannot be used with this procedure.
 
 _PGDG_ is a project that maintains _RPM_ builds of _PostgreSQL_ and related components.
@@ -183,7 +183,7 @@ Add the _PGDG_ repo on all nodes (as `root`):
 
 [source, bash]
 ----
-yum install https://download.postgresql.org/pub/repos/yum/9.5/redhat/rhel-7-x86_64/pgdg-redhat95-9.5-2.noarch.rpm -y
+yum install https://download.postgresql.org/pub/repos/yum/9.6/redhat/rhel-7-x86_64/pgdg-redhat96-9.6-3.noarch.rpm -y
 ----
 
 For _RHEL/CentOS 6_, replace `rhel-7` with `rhel-6`.
@@ -242,14 +242,14 @@ For this reason, install the following packages on each of the _pgpool-II/OpenNM
 
 [source]
 ----
-yum install postgresql95 postgresql95-server postgresql95-libs pgpool-II-95 rsync -y
+yum install postgresql96 postgresql96-server postgresql96-libs pgpool-II-96 rsync -y
 ----
 
 On each the database servers, install the packages for _PostgreSQL Server_ and _repmgr_:
 
 [source]
 ----
-yum install postgresql95 postgresql95-server postgresql95-contrib repmgr95 rsync -y
+yum install postgresql96 postgresql96-server postgresql96-contrib repmgr96 rsync -y
 ----
 
 At this point, the `postgres` user must exist on all the 4 machines.
@@ -261,7 +261,7 @@ Verify with the following command:
 postgres:x:26:26:PostgreSQL Server:/var/lib/pgsql:/bin/bash
 ----
 
-The user will be created automatically as part of the installation of the `postgresql95-server` package.
+The user will be created automatically as part of the installation of the `postgresql96-server` package.
 
 WARNING: Do not make _pgpool-II_ to start with the operating system, because it will be managed by the cluster services.
 
@@ -280,8 +280,8 @@ For example, to download and Install Oracle JDK 8:
 
 [source, bash]
 ----
-curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u91-b14/jdk-8u91-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
-yum install -y /tmp/jdk-8u91-linux-x64.rpm
+curl -v -L -H "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u161-b12/2f38c3b165be4555a1fa6e98c45e0808/jdk-8u161-linux-x64.rpm -o /tmp/jdk-8u91-linux-x64.rpm
+yum install -y /tmp/jdk-8u161-linux-x64.rpm
 ----
 
 _Apache Cassandra_ also requires Java. It is recommended to download and install the Oracle JDK 8 on all the _Cassandra_ nodes if you're planning to use it.
@@ -336,7 +336,7 @@ Install and enable the EPEL Repository on RHEL/CentOS 6:
 
 [source, bash]
 ----
-yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-6.noarch.rpm -y
+yum install epel-release -y
 yum install haveged -y
 chkconfig haveged on
 service haveged start
@@ -346,7 +346,7 @@ Install and enable the EPEL Repository on RHEL/CentOS 7:
 
 [source, bash]
 ----
-yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+yum install epel-release -y
 yum install haveged -y
 systemctl enable haveged
 systemctl start haveged
@@ -515,7 +515,7 @@ It is important to tune the initialization scripts properly.
 
 ==== SysV Initialization Scripts (RHEL/CentOS 6)
 
-Edit the file `/etc/init.d/pgpool-II-95`, and inside the start function, call the `dbcleanup.sh` script before start _pgpool_.
+Edit the file `/etc/init.d/pgpool-II-96`, and inside the start function, call the `dbcleanup.sh` script before start _pgpool_.
 Here is how the content should look like:
 
 [source, bash]
@@ -530,35 +530,35 @@ WARNING: Be careful when upgrading the installed packages! The files modified ab
 ==== Systemd Initialization Scripts (RHEL/CentOS 7)
 
 The _systemd_ initialization script for _pgpool-II_ is not correct and it must be fixed prior start using _pgpool_.
-Edit the `/lib/systemd/system/pgpool-II-95.service` file and make sure the content looks like the following:
+Edit the `/lib/systemd/system/pgpool-II-96.service` file and make sure the content looks like the following:
 
 [source, ini]
 ----
-include::../files/prerequisites/pgpool-II-95.service[]
+include::../files/prerequisites/pgpool-II.service[]
 ----
 
 Make sure the permissions on the file are correct:
 
 [source, bash]
 ----
-chmod 0644 /lib/systemd/system/pgpool-II-95.service
+chmod 0644 /lib/systemd/system/pgpool-II-96.service
 ----
 
-Edit `/usr/lib/tmpfiles.d/pgpool-II-95.conf` and make sure the content look like the following:
+Edit `/usr/lib/tmpfiles.d/pgpool-II-96.conf` and make sure the content look like the following:
 
 ----
-include::../files/prerequisites/pgpool-II-95.conf[]
+include::../files/prerequisites/pgpool-II.conf[]
 ----
 
 To avoid reboot the system, fix the ownership of the directory:
 
 [source, bash]
 ----
-chown postgres:postgres /var/run/pgpool-II-95
+chown postgres:postgres /var/run/pgpool-II-96
 ----
 
 It is important to update the default options used by `pgpool` when it initializes.
-These options are defined on `/etc/sysconfig/pgpool-II-95`.
+These options are defined on `/etc/sysconfig/pgpool-II-96`.
 Be sure its content look like the following:
 
 [source]
@@ -569,7 +569,7 @@ OPTS=" -n --discard-status"
 Similarly, by default the _systemd_ initialization script for _OpenNMS_ will force `START_TIMEOUT=0`.
 In order to avoid potential problems when checking the _OpenNMS_ state, it is better to disable this option.
 
-Edit the `/usr/lib/systemd/system/opennms.service` file, remove the `-Q` from the `ExecStart` method; add `TimeoutStartSec=0` and replace `postgresql.service` with `pgpool-II-95.service`.
+Edit the `/usr/lib/systemd/system/opennms.service` file, remove the `-Q` from the `ExecStart` method; add `TimeoutStartSec=0` and replace `postgresql.service` with `pgpool-II-96.service`.
 The content should look like this:
 
 [source, ini]

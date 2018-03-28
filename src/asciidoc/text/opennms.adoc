@@ -145,14 +145,14 @@ On _RHEL/CentOS 6_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# service pgpool-II-95 start
+[root@onmssrv01 ~]# service pgpool-II-96 start
 ----
 
 On _RHEL/CentOS 7_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# systemctl start pgpool-II-95
+[root@onmssrv01 ~]# systemctl start pgpool-II-96
 ----
 
 Then, execute the install script:
@@ -257,7 +257,7 @@ On _RHEL/CentOS 6_:
 [source, bash]
 ----
 [root@onmssrv01 ~]# service opennms stop
-[root@onmssrv01 ~]# service pgpool-II-95 stop
+[root@onmssrv01 ~]# service pgpool-II-96 stop
 ----
 
 On _RHEL/CentOS 7_:
@@ -265,7 +265,7 @@ On _RHEL/CentOS 7_:
 [source, bash]
 ----
 [root@onmssrv01 ~]# systemctl stop opennms
-[root@onmssrv01 ~]# systemctl stop pgpool-II-95
+[root@onmssrv01 ~]# systemctl stop pgpool-II-96
 ----
 
 IMPORTANT: Do not make _opennms_ or _pgpool_ to start with the machine, as these applications will be controlled by the cluster services, not the operating system.

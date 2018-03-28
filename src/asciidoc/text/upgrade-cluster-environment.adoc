@@ -14,7 +14,7 @@ Each of them depend on which component you want to upgrade.
 
 === PostgreSQL
 
-The only possible way to perform a live upgrade (i.e. without shutting down _pgpool-II_ or the _OpenNMS_ cluster) is when upgrading to the same code base. For example, this document was designed for PostgreSQL 9.4, so you can upgrade to any 9.4 release but not to a newer release like 9.5. Upgrading to a 9.5 is not considered an upgrade, it is considered a migration because the data structure can be different.
+The only possible way to perform a live upgrade (i.e. without shutting down _pgpool-II_ or the _OpenNMS_ cluster) is when upgrading to the same code base. For example, this document was designed for PostgreSQL 9.4, so you can upgrade to any 9.4 release but not to a newer release like 9.6. Upgrading to a 9.6 is not considered an upgrade, it is considered a migration because the data structure can be different.
 
 If we’re talking about the same code base, here is the procedure:
 
@@ -47,7 +47,7 @@ For this reason, upgrading to 3.5 or higher is considered a migration.
 . Log into the standby server (use the cluster commands to verify that _pgpool/opennms_ are not running).
 . Perform the upgrade of the _pgpool_ packages (or the full operating system if apply).
 . Reboot the server, to ensure it will properly starts.
-. Remove the content of `/etc/pgpool-II-95`, or move it to a different location.
+. Remove the content of `/etc/pgpool-II-96`, or move it to a different location.
 
 ==== Primary server
 
@@ -115,7 +115,7 @@ If you want to upgrade the _DB_, _Pgpool_, or _OpenNMS_ from one major version t
 
 In the case of _PostgreSQL_, you must create a full binary dump and then restore it after upgrading _PostgreSQL_, or use the command line tools for the same purpose.
 _PostgreSQL_ intentionaly uses different directory names for each major version precisely because the data directory is not compatible.
-So, you currently have the data on `/var/lib/pgsql/9.4` and _9.5_ will put the data on `/var/lib/pgsql/9.5`.
+So, you currently have the data on `/var/lib/pgsql/9.4` and _9.6_ will put the data on `/var/lib/pgsql/9.6`.
 Follow the recommendation at http://www.postgresql.org to upgrade your _PostgreSQL_ server.
 Do a similar thing for _PgPool_.
 

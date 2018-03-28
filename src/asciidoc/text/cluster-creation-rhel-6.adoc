@@ -164,7 +164,7 @@ The global resources we’re going to add are the following:
 
 * A shared filesystem for `/opt/opennms/etc`
 * A shared filesystem for `/var/opennms`
-* A shared filesystem for `/etc/pgpool-II-95`
+* A shared filesystem for `/etc/pgpool-II-96`
 * The init script for _pgpool-II_
 * The init script for _OpenNMS_
 * The floating IP Address
@@ -175,14 +175,14 @@ Use the above information for creating the _NFS_ resources:
 ----
 [root@onmssrv01 ~]# ccs --addresource netfs name=onms_etc host=nfssrv01.local export=/opt/opennms/etc mountpoint=/opt/opennms/etc fstype=nfs4
 [root@onmssrv01 ~]# ccs --addresource netfs name=onms_var host=nfssrv01.local export=/opt/opennms/share mountpoint=/var/opennms fstype=nfs4
-[root@onmssrv01 ~]# ccs --addresource netfs name=pgpool_etc host=nfssrv01.local export=/opt/opennms/pgpool mountpoint=/etc/pgpool-II-95 fstype=nfs4
+[root@onmssrv01 ~]# ccs --addresource netfs name=pgpool_etc host=nfssrv01.local export=/opt/opennms/pgpool mountpoint=/etc/pgpool-II-96 fstype=nfs4
 ----
 
 Then, add the script resources:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# ccs --addresource script name=pgpool_bin file=/etc/init.d/pgpool-II-95
+[root@onmssrv01 ~]# ccs --addresource script name=pgpool_bin file=/etc/init.d/pgpool-II-96
 [root@onmssrv01 ~]# ccs --addresource script name=onms_bin file=/etc/init.d/opennms
 ----
 
@@ -240,8 +240,8 @@ The final `/etc/cluster/cluster.conf` should look like the following:
     <resources>
       <netfs export="/opt/opennms/etc" fstype="nfs4" host="nfssrv01.local" mountpoint="/opt/opennms/etc" name="onms_etc"/>
       <netfs export="/var/opennms" fstype="nfs4" host="nfssrv01.local" mountpoint="/opt/opennms/share" name="onms_var"/>
-      <netfs export="/opt/opennms/pgpool" fstype="nfs4" host="nfssrv01.local" mountpoint="/etc/pgpool-II-95" name="pgpool_etc"/>
-      <script file="/etc/init.d/pgpool-II-95" name="pgpool_bin"/>
+      <netfs export="/opt/opennms/pgpool" fstype="nfs4" host="nfssrv01.local" mountpoint="/etc/pgpool-II-96" name="pgpool_etc"/>
+      <script file="/etc/init.d/pgpool-II-96" name="pgpool_bin"/>
       <script file="/etc/init.d/opennms" name="onms_bin"/>
       <ip address="192.168.205.150" monitor_link="1"/>
     </resources>

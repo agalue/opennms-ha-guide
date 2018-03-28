@@ -1,8 +1,8 @@
 [Unit]
 Description=OpenNMS server
-Wants=pgpool-II-95.service
+Wants=pgpool-II-96.service
 Requires=network.target network-online.target
-After=pgpool-II-95.service network.target network-online.target
+After=pgpool-II-96.service network.target network-online.target
 
 [Service]
 User=root

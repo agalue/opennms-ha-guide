@@ -205,7 +205,7 @@ The cluster resources we’re going to add are the following:
 * The floating IP Address
 * A shared filesystem for `/opt/opennms/etc`
 * A shared filesystem for `/var/opennms`
-* A shared filesystem for `/etc/pgpool-II-95`
+* A shared filesystem for `/etc/pgpool-II-96`
 * The init script for _pgpool-II_
 * The init script for _OpenNMS_
 
@@ -245,7 +245,7 @@ op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 
 [root@onmssrv01 ~]# pcs resource create pgpool_etc ocf:heartbeat:Filesystem \
-device="nfssrv01:/opt/opennms/pgpool" directory="/etc/pgpool-II-95" fstype="nfs" \
+device="nfssrv01:/opt/opennms/pgpool" directory="/etc/pgpool-II-96" fstype="nfs" \
 op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 ----
@@ -256,7 +256,7 @@ Create the cluster resources for the application using _systemd_:
 
 [source, bash]
 ----
-[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool-II-95 \
+[root@onmssrv01 ~]# pcs resource create pgpool_bin systemd:pgpool-II-96 \
 op monitor interval=30s on-fail=standby \
 --group onms_app meta target-role="Started" migration-threshold="1"
 
@@ -300,7 +300,7 @@ Full list of resources:
      onms_etc	(ocf::heartbeat:Filesystem):	Started onmssrv01
      onms_var	(ocf::heartbeat:Filesystem):	Started onmssrv01
      pgpool_etc	(ocf::heartbeat:Filesystem):	Started onmssrv01
-     pgpool_bin	(systemd:pgpool-II-95):	Started onmssrv01
+     pgpool_bin	(systemd:pgpool-II-96):	Started onmssrv01
      onms_bin	(systemd:opennms):	Started onmssrv01
 
 PCSD Status:
@@ -352,12 +352,12 @@ Resources:
                stop interval=0s timeout=60 (onms_var-stop-interval-0s)
                monitor interval=30s on-fail=standby (onms_var-monitor-interval-30s)
   Resource: pgpool_etc (class=ocf provider=heartbeat type=Filesystem)
-   Attributes: device=nfssrv01:/opt/opennms/pgpool directory=/etc/pgpool-II-95 fstype=nfs
+   Attributes: device=nfssrv01:/opt/opennms/pgpool directory=/etc/pgpool-II-96 fstype=nfs
    Meta Attrs: target-role=Started migration-threshold=1
    Operations: start interval=0s timeout=60 (pgpool_etc-start-interval-0s)
                stop interval=0s timeout=60 (pgpool_etc-stop-interval-0s)
                monitor interval=30s on-fail=standby (pgpool_etc-monitor-interval-30s)
-  Resource: pgpool_bin (class=systemd type=pgpool-II-95)
+  Resource: pgpool_bin (class=systemd type=pgpool-II-96)
    Meta Attrs: target-role=Started migration-threshold=1
    Operations: monitor interval=30s on-fail=standby (pgpool_bin-monitor-interval-30s)
   Resource: onms_bin (class=systemd type=opennms)
