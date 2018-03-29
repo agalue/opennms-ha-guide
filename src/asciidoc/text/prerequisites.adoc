@@ -170,8 +170,7 @@ IMPORTANT: This is mandatory for Cassandra.
 The standard _RHEL/CentOS_ repositories do not contain the packages for _pgpool-II_ or _repmgr_.
 Additionally, the supported _PostgreSQL_ version for _RHEL/CentOS 6_ is _8.4_, and for _RHEL/CentOS 7_ is _9.2_.
 
-Because this solution required the usage of at least _PostgreSQL 9.4_, _repmgr 3.0_ and _pgpool-II 3.4_, the  _PGDG_ repository needs to be added.
-For this tutorial, we're going to use _PostgreSQL 9.6_ and the provided versions for _repmgr_ and _pgpool-II_ on the _PGDG_ repository for that version of PostgreSQL.
+For this tutorial, we're going to use _PostgreSQL 9.6_ and the provided versions for _repmgr_ (version 4.x) and _pgpool-II_ (version 3.7.x) on the _PGDG_ repository for that version of PostgreSQL.
 Newer versions can be used without issues, but if 9.4 will be used, make sure to use at least 9.4.11. Older versions cannot be used with this procedure.
 
 _PGDG_ is a project that maintains _RPM_ builds of _PostgreSQL_ and related components.

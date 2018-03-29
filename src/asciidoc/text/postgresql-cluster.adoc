@@ -97,7 +97,7 @@ It is recommended to make a copy of `repmgr.conf` (for documentation purposes), 
 
 [source]
 ----
-include::../files/postgresql-cluster/repmgr.conf[]
+include::../files/postgresql-cluster/repmgr.master.conf[]
 ----
 
 IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `use_replication_slots` must be `0` (i.e. not enabled).
@@ -191,14 +191,12 @@ The last step is to register _pgdbsrv01_ as master node for _repmgr_:
 [source, bash]
 ----
 [root@pgdbsrv01 ~]$ sudo su - postgres
--bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --verbose master register
-[2016-06-17 12:42:11] [NOTICE] using configuration file "/etc/repmgr/9.6/repmgr.conf"
-[2016-06-17 12:42:11] [INFO] connecting to master database
-[2016-06-17 12:42:11] [INFO] connected to master, checking its state
-[2016-06-17 12:42:11] [INFO] master register: creating database objects inside the repmgr_opennms_cluster schema
-[2016-06-17 12:42:11] [INFO] retrieving node list for cluster 'opennms_cluster'
-[2016-06-17 12:42:11] [WARNING] get_master_node_id(): no active primary found
-[2016-06-17 12:42:11] [NOTICE] master node correctly registered for cluster opennms_cluster with id 1 (conninfo: host=pgdbsrv01 user=repmgr dbname=repmgr)
+-bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf -v master register
+NOTICE: using provided configuration file "/etc/repmgr/9.6/repmgr.conf"
+NOTICE: attempting to install extension "repmgr"
+NOTICE: "repmgr" extension successfully installed
+WARNING: get_primary_node_id(): no active primary found
+NOTICE: primary node record (id: 1) registered
 ----
 
 If the `.pgpass` or the _DNS_ is not well configured, the above command could fail or request a password for the _repmgr_ user.
@@ -224,20 +222,7 @@ Configure _repmgr_ similar to the primary by creating `/etc/repmgr/9.6/repmgr.co
 
 [source]
 ----
-cluster=opennms_cluster
-node=2
-node_name=pgdbsrv02
-conninfo='host=pgdbsrv02 user=repmgr dbname=repmgr'
-use_replication_slots=1 # Only for PostgreSQL 9.4 or newer
-loglevel=INFO
-pg_bindir=/usr/pgsql-9.6/bin/
-pg_basebackup_options='--xlog-method=stream'
-master_response_timeout=30
-reconnect_attempts=3
-reconnect_interval=10
-failover=manual
-promote_command='/usr/pgsql-9.6/bin/repmgr standby promote -f /etc/repmgr/9.6/repmgr.conf'
-follow_command='/usr/pgsql-9.6/bin/repmgr standby follow -f /etc/repmgr/9.6/repmgr.conf'
+include::../files/postgresql-cluster/repmgr.slave.conf[]
 ----
 
 IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `use_replication_slots` must be `0` (i.e. not enabled).
@@ -252,25 +237,41 @@ Don’t forget to set the owner of the configuration file to _postgres_:
 [root@pgdbsrv02 ~]$ chown postgres:postgres /etc/repmgr/9.6/repmgr.conf
 ----
 
-Sync the configuration and contents of the primary with the standby:
+Use the `--dry-run` option to check the standby can be cloned:
 
 [source, bash]
 ----
 [root@pgdbsrv02 ~]$ sudo su - postgres
--bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --verbose -D /var/lib/pgsql/9.6/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv01
-2016-06-17 12:47:17] [NOTICE] using configuration file "/etc/repmgr/9.6/repmgr.conf"
-[2016-06-17 12:47:17] [NOTICE] destination directory '/var/lib/pgsql/9.6/data' provided
-[2016-06-17 12:47:17] [INFO] connecting to upstream node
-[2016-06-17 12:47:17] [INFO] connected to upstream node, checking its state
-[2016-06-17 12:47:17] [INFO] Successfully connected to upstream node. Current installation size is 28 MB
-[2016-06-17 12:47:17] [INFO] creating directory "/var/lib/pgsql/9.6/data"...
-[2016-06-17 12:47:17] [NOTICE] starting backup (using pg_basebackup)...
-[2016-06-17 12:47:17] [HINT] this may take some time; consider using the -c/--fast-checkpoint option
-[2016-06-17 12:47:17] [INFO] executing: '/usr/pgsql-9.6/bin/pg_basebackup -l "repmgr base backup"  -D /var/lib/pgsql/9.6/data -h pgdbsrv01 -p 5432 -U repmgr --xlog-method=stream'
-[2016-06-17 12:47:17] [NOTICE] standby clone (using pg_basebackup) complete
-[2016-06-17 12:47:17] [NOTICE] you can now start your PostgreSQL server
-[2016-06-17 12:47:17] [HINT] for example : pg_ctl -D /var/lib/pgsql/9.6/data start
-[2016-06-17 12:47:17] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
+-bash-4.1$ /usr/pgsql-9.6/bin/repmgr -h pgdbsrv01 -U repmgr -d repmgr -f /etc/repmgr/9.6/repmgr.conf standby clone --dry-run
+NOTICE: destination directory "/var/lib/pgsql/9.6/data" provided
+INFO: connecting to source node
+DETAIL: current installation size is 28 MB
+NOTICE: standby will attach to upstream node 1
+HINT: consider using the -c/--fast-checkpoint option
+INFO: all prerequisites for "standby clone" are met
+----
+
+If no problems are reported, sync the configuration and contents of the primary with the standby:
+
+[source, bash]
+----
+[root@pgdbsrv02 ~]$ sudo su - postgres
+-bash-4.1$ /usr/pgsql-9.6/bin/repmgr -h pgdbsrv01 -U repmgr -d repmgr -f /etc/repmgr/9.6/repmgr.conf -v standby clone
+NOTICE: using provided configuration file "/etc/repmgr/9.6/repmgr.conf"
+NOTICE: destination directory "/var/lib/pgsql/9.6/data" provided
+INFO: connecting to source node
+NOTICE: checking for available walsenders on source node (2 required)
+INFO: sufficient walsenders available on source node (2 required)
+INFO: checking and correcting permissions on existing directory "/var/lib/pgsql/9.6/data"
+INFO: replication slot "repmgr_slot_2" created on source node
+NOTICE: starting backup (using pg_basebackup)...
+HINT: this may take some time; consider using the -c/--fast-checkpoint option
+INFO: executing:
+  pg_basebackup -l "repmgr base backup"  -D /var/lib/pgsql/9.6/data -h psql01 -p 5432 -U repmgr -S repmgr_slot_2 --xlog-method=stream
+INFO: replication slot "repmgr_slot_2" aleady exists on upstream node 1
+NOTICE: standby clone (using pg_basebackup) complete
+NOTICE: you can now start your PostgreSQL server
+HINT: for example: pg_ctl -D /var/lib/pgsql/9.6/data start
 -bash-4.1$ exit
 logout
 ----
@@ -302,15 +303,14 @@ As the last step in the standby node setup, register the standby in _repmgr_:
 [source, bash]
 ----
 [root@pgdbsrv02 ~]$ su - postgres
--bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --verbose standby register
-[2016-06-17 12:50:17] [NOTICE] using configuration file "/etc/repmgr/9.6/repmgr.conf"
-[2016-06-17 12:50:17] [INFO] connecting to standby database
-[2016-06-17 12:50:17] [INFO] connecting to master database
-[2016-06-17 12:50:17] [INFO] retrieving node list for cluster 'opennms_cluster'
-[2016-06-17 12:50:17] [INFO] checking role of cluster node '1'
-[2016-06-17 12:50:17] [INFO] registering the standby
-[2016-06-17 12:50:17] [INFO] standby registration complete
-[2016-06-17 12:50:17] [NOTICE] standby node correctly registered for cluster opennms_cluster with id 2 (conninfo: host=pgdbsrv02 user=repmgr dbname=repmgr)
+-bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf -v standby register
+INFO: connecting to local node "psql02" (ID: 2)
+INFO: connecting to primary database
+INFO: searching for primary node
+INFO: checking if node 1 is primary
+INFO: current primary node is 1
+INFO: standby registration complete
+NOTICE: standby node "psql02" (id: 2) successfully registered
 -bash-4.1$ exit
 logout
 ----
@@ -417,11 +417,10 @@ Another way to have a quick status of the cluster is:
 [source, bash]
 ----
 [root@pgdbsrv01 ~]# su - postgres -c "/usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf cluster show"
-[2016-06-17 12:56:40] [INFO] connecting to database
-Role      | Name      | Upstream  | Connection String
-----------+-----------|-----------|-----------------------------------------
-* master  | pgdbsrv01 |           | host=pgdbsrv01 user=repmgr dbname=repmgr
-  standby | pgdbsrv02 | pgdbsrv01 | host=pgdbsrv02 user=repmgr dbname=repmgr
+ ID | Name   | Role    | Status    | Upstream | Location | Connection string                                    
+----+--------+---------+-----------+----------+----------+--------------------------------------
+ 1  | psql01 | primary | * running |          | default  | host=psql01 user=repmgr dbname=repmgr
+ 2  | psql02 | standby |   running | psql01   | default  | host=psql02 user=repmgr dbname=repmgr
 ----
 
 The above command can be executed on any _PostgreSQL_ server.
