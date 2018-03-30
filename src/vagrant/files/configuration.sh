@@ -22,6 +22,8 @@ pg_repo_url=https://download.postgresql.org/pub/repos/yum/$pg_version/redhat/rhe
 
 pg_home="/usr/pgsql-$pg_version"
 pg_data="/var/lib/pgsql/$pg_version"
+repmgr_cfg="/etc/repmgr/$pg_version/repmgr.conf"
+repmgr_bin="$pg_home/bin/repmgr"
 
 pgpool_dbpass=pgpool
 repmgr_dbpass=repmgr

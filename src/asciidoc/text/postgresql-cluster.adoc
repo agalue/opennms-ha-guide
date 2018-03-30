@@ -75,20 +75,33 @@ Here is an example:
 
 [source]
 ----
+# DB Version: 9.6
+# OS Type: linux
+# DB Type: mixed
+# Total Memory (RAM): 32 GB
+# Number of Connections: 200
+
 max_connections = 200
-shared_buffers = 512MB
-effective_cache_size = 1536MB
+shared_buffers = 8GB
+effective_cache_size = 24GB
+maintenance_work_mem = 2GB
+min_wal_size = 1GB
+max_wal_size = 2GB
+checkpoint_completion_target = 0.9
+wal_buffers = 16MB
+default_statistics_target = 100
+random_page_cost = 1.1
+effective_io_concurrency = 200
+max_worker_processes = 8
+max_parallel_workers_per_gather = 4
 work_mem = 2621kB
-maintenance_work_mem = 128MB
 ----
 
 WARNING: The above settings should not be used with the _Vagrant VMs_, as these VMs only have 1GB of _RAM_.
 That was just an example for a physical server with enough _RAM_.
 Leave the default settings for the _Vagrant VMs_.
 
-IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `max_replication_slots` cannot be used.
-           In case it is required to use an older version, you should replace `max_replication_slots` with: +
-           `wal_keep_segments = 5000`
+IMPORTANT: For _PostgreSQL 9.0_ to _9.3_, `max_replication_slots` cannot be used. In case it is required to use an older version, you should replace `max_replication_slots` with `wal_keep_segments = 5000`.
 
 The reason of using at least _9.4_ with replication slots is precisely because the above setting must be big in 9.3 (or older) to avoid issues with replication, but that forces to have a huge filesystem for `/var/lib/pgsql`. Either way, with replication slots, a standby server must not be down for a long time, otherwise, this might eat all the disk space allocated for `/var/lib/psql`.
 
@@ -107,6 +120,21 @@ Don’t forget to set the owner of the configuration file to _postgres_:
 [source, bash]
 ----
 [root@pgdbsrv01 ~]$ chown postgres:postgres /etc/repmgr/9.6/repmgr.conf
+----
+
+Also sudo should be enabled for `repmgr`:
+
+[source, bash]
+----
+cat <<EOF > /etc/sudoers.d/postgres
+Defaults:postgres !requiretty
+postgres ALL = NOPASSWD: /bin/systemctl status postgresql-9.6, \
+/bin/systemctl start postgresql-9.6, \
+/bin/systemctl stop postgresql-9.6, \
+/bin/systemctl reload postgresql-9.6, \
+/bin/systemctl restart postgresql-9.6
+EOF
+chmod 440 /etc/sudoers.d/postgres
 ----
 
 Enable and Start _PostgreSQL_ on the master:
@@ -1072,20 +1100,23 @@ There are two way to perform the sync operation:
 ----
 [root@pgdbsrv01 ~]# su - postgres
 -bash-4.1$ rm -rf 9.6/data/
--bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --verbose -D /var/lib/pgsql/9.4/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
-[2016-06-17 14:49:37] [NOTICE] using configuration file "/etc/repmgr/9.6/repmgr.conf"
-[2016-06-17 14:49:37] [NOTICE] destination directory '/var/lib/pgsql/9.4/data' provided
-[2016-06-17 14:49:37] [INFO] connecting to upstream node
-[2016-06-17 14:49:37] [INFO] connected to upstream node, checking its state
-[2016-06-17 14:49:37] [INFO] Successfully connected to upstream node. Current installation size is 28 MB
-[2016-06-17 14:49:37] [INFO] creating directory "/var/lib/pgsql/9.4/data"...
-[2016-06-17 14:49:37] [NOTICE] starting backup (using pg_basebackup)...
-[2016-06-17 14:49:37] [HINT] this may take some time; consider using the -c/--fast-checkpoint option
-[2016-06-17 14:49:37] [INFO] executing: '/usr/pgsql-9.6/bin/pg_basebackup -l "repmgr base backup"  -D /var/lib/pgsql/9.4/data -h pgdbsrv02 -p 5432 -U repmgr --xlog-method=stream'
-[2016-06-17 14:49:38] [NOTICE] standby clone (using pg_basebackup) complete
-[2016-06-17 14:49:38] [NOTICE] you can now start your PostgreSQL server
-[2016-06-17 14:49:38] [HINT] for example : pg_ctl -D /var/lib/pgsql/9.4/data start
-[2016-06-17 14:49:38] [HINT] After starting the server, you need to register this standby with "repmgr standby register"
+-bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --force -v -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
+NOTICE: using provided configuration file "/etc/repmgr/9.6/repmgr.conf"
+NOTICE: destination directory "/var/lib/pgsql/9.6/data" provided
+INFO: connecting to source node
+NOTICE: checking for available walsenders on source node (2 required)
+INFO: sufficient walsenders available on source node (2 required)
+WARNING: directory "/var/lib/pgsql/9.6/data" exists but is not empty
+NOTICE: -F/--force provided - deleting existing data directory "/var/lib/pgsql/9.6/data"
+INFO: replication slot "repmgr_slot_1" created on source node
+NOTICE: starting backup (using pg_basebackup)...
+HINT: this may take some time; consider using the -c/--fast-checkpoint option
+INFO: executing:
+  /usr/pgsql-9.6/bin/pg_basebackup -l "repmgr base backup"  -D /var/lib/pgsql/9.6/data -h postgresql2 -p 5432 -U repmgr -X stream -S repmgr_slot_1 
+INFO: replication slot "repmgr_slot_1" aleady exists on upstream node 2
+NOTICE: standby clone (using pg_basebackup) complete
+NOTICE: you can now start your PostgreSQL server
+HINT: for example: systemctl start postgresql-9.6
 ----
 
 IMPORTANT: If the command execution ask for the password configured for the repmgr user, execute the restorecon command to avoid SELinux issues when it is enforcing.
@@ -1095,7 +1126,7 @@ IMPORTANT: If the command execution ask for the password configured for the repm
 [source, bash]
 ----
 [root@pgdbsrv01 ~]# su - postgres
--bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --verbose --force --rsync-only -D /var/lib/pgsql/9.6/data -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
+-bash-4.1$ /usr/pgsql-9.6/bin/repmgr -f /etc/repmgr/9.6/repmgr.conf --force --rsync-only -v -d repmgr -p 5432 -U repmgr -R postgres standby clone pgdbsrv02
 [2016-06-17 14:53:20] [NOTICE] using configuration file "/etc/repmgr/9.6/repmgr.conf"
 [2016-06-17 14:53:20] [NOTICE] destination directory '/var/lib/pgsql/9.6/data' provided
 [2016-06-17 14:53:20] [INFO] connecting to upstream node
@@ -1129,6 +1160,8 @@ NOTICE:  pg_stop_backup complete, all required WAL segments have been archived
 ----
 
 As you can see the command is basically the same, the only change is the addition of the `--rsync-only` option.
+
+IMPORTANT: `--rsync-only` doesn't seem to work on repmgr 4.x.
 
 At this point, the data is (more or less) in sync with the current primary on _pgdbsrv02_, so let’s start _pgdbsrv01_ to act as the standby:
 

@@ -9,6 +9,24 @@ if ! rpm -qa | grep -q postgresql$pg_family-server; then
   sudo yum install postgresql$pg_family postgresql$pg_family-server postgresql$pg_family-libs postgresql$pg_family-contrib repmgr$pg_family pgpool-II-$pg_family rsync -y
 fi
 
+# Make PG tools available
+
+cat <<EOF > /etc/profile.d/postgresql.sh
+PATH=/usr/pgsql-$pg_version/bin:\$PATH
+EOF
+
+# sudo access for repmgr
+
+cat <<EOF > /etc/sudoers.d/postgres
+Defaults:postgres !requiretty
+postgres ALL = NOPASSWD: /bin/systemctl status postgresql-$pg_version, \
+/bin/systemctl start postgresql-$pg_version, \
+/bin/systemctl stop postgresql-$pg_version, \
+/bin/systemctl reload postgresql-$pg_version, \
+/bin/systemctl restart postgresql-$pg_version
+EOF
+chmod 440 /etc/sudoers.d/postgres
+
 # Create DB Cleanup Script
 
 sudo cat <<EOF >> /usr/local/bin/dbcleanup.sh
